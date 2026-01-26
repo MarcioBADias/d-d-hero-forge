@@ -3,6 +3,7 @@ import { Label } from '@/components/ui/label';
 import { Character, AbilityScore } from '@/types/character';
 import { feats, originFeats, generalFeats } from '@/data/feats';
 import { backgrounds } from '@/data/backgrounds';
+import { characterClasses } from '@/data/classes';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
@@ -225,7 +226,7 @@ export function StepFeatsSpells({ character, updateCharacter }: StepFeatsSpellsP
 
       {/* Spells Section Placeholder */}
       {character.classes?.some(c => {
-        const classData = require('@/data/classes').characterClasses[c.className.toLowerCase()];
+        const classData = characterClasses[c.className.toLowerCase()];
         return classData?.spellcasting;
       }) && (
         <div className="p-4 rounded-lg bg-arcane/10 border border-arcane/30">
