@@ -13,6 +13,10 @@ export default {
       },
     },
     extend: {
+      fontFamily: {
+        cinzel: ['Cinzel', 'Times New Roman', 'serif'],
+        crimson: ['Crimson Text', 'Georgia', 'serif'],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -57,6 +61,22 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        // D&D specific colors
+        gold: {
+          DEFAULT: "hsl(43 74% 49%)",
+          light: "hsl(43 80% 65%)",
+          dark: "hsl(43 70% 35%)",
+        },
+        parchment: {
+          DEFAULT: "hsl(40 40% 85%)",
+          dark: "hsl(35 30% 70%)",
+        },
+        blood: "hsl(0 70% 40%)",
+        arcane: "hsl(270 60% 50%)",
+        nature: "hsl(120 40% 35%)",
+        fire: "hsl(20 90% 50%)",
+        ice: "hsl(200 60% 50%)",
+        shadow: "hsl(260 30% 20%)",
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -65,25 +85,32 @@ export default {
       },
       keyframes: {
         "accordion-down": {
-          from: {
-            height: "0",
-          },
-          to: {
-            height: "var(--radix-accordion-content-height)",
-          },
+          from: { height: "0" },
+          to: { height: "var(--radix-accordion-content-height)" },
         },
         "accordion-up": {
-          from: {
-            height: "var(--radix-accordion-content-height)",
-          },
-          to: {
-            height: "0",
-          },
+          from: { height: "var(--radix-accordion-content-height)" },
+          to: { height: "0" },
+        },
+        "glow-pulse": {
+          "0%, 100%": { boxShadow: "0 0 10px hsl(43 74% 49% / 0.3)" },
+          "50%": { boxShadow: "0 0 20px hsl(43 74% 49% / 0.6)" },
+        },
+        "fade-in": {
+          from: { opacity: "0", transform: "translateY(10px)" },
+          to: { opacity: "1", transform: "translateY(0)" },
+        },
+        "slide-in-right": {
+          from: { opacity: "0", transform: "translateX(20px)" },
+          to: { opacity: "1", transform: "translateX(0)" },
         },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "glow-pulse": "glow-pulse 2s ease-in-out infinite",
+        "fade-in": "fade-in 0.3s ease-out",
+        "slide-in-right": "slide-in-right 0.3s ease-out",
       },
     },
   },
