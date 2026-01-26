@@ -185,14 +185,14 @@ export function StepAttributes({ character, updateCharacter }: StepAttributesPro
                   </div>
                 ) : (
                   <Select
-                    value={standardAssignments[key]?.toString() || ''}
-                    onValueChange={(v) => handleStandardAssign(key, v)}
+                    value={standardAssignments[key]?.toString() || 'unassigned'}
+                    onValueChange={(v) => handleStandardAssign(key, v === 'unassigned' ? '' : v)}
                   >
                     <SelectTrigger className="w-20 bg-background/50">
                       <SelectValue placeholder="—" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">—</SelectItem>
+                      <SelectItem value="unassigned">—</SelectItem>
                       {getAvailableStandardValues(key).map((v) => (
                         <SelectItem key={v} value={v.toString()}>{v}</SelectItem>
                       ))}
