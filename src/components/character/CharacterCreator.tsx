@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Character, createEmptyCharacter } from '@/types/character';
@@ -9,7 +10,11 @@ import { StepClass } from './steps/StepClass';
 import { StepAttributes } from './steps/StepAttributes';
 import { StepFeatsSpells } from './steps/StepFeatsSpells';
 import { CharacterSheet } from './sheet/CharacterSheet';
-import { ChevronLeft, ChevronRight, Scroll, Sword, Shield, Sparkles, Dices, BookOpen } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useCharacters } from '@/hooks/useCharacters';
+import { AuthModal } from '@/components/auth/AuthModal';
+import { ChevronLeft, ChevronRight, Scroll, Sword, Shield, Sparkles, Dices, BookOpen, Save, Home, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 const steps = [
   { id: 1, name: 'Básico', icon: Scroll },
@@ -21,9 +26,14 @@ const steps = [
 ];
 
 export function CharacterCreator() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const { saveCharacter } = useCharacters();
   const [currentStep, setCurrentStep] = useState(1);
   const [character, setCharacter] = useState<Partial<Character>>(createEmptyCharacter());
   const [showSheet, setShowSheet] = useState(false);
+  const [showAuth, setShowAuth] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const updateCharacter = (updates: Partial<Character>) => {
     setCharacter((prev) => ({ ...prev, ...updates }));
@@ -43,13 +53,53 @@ export function CharacterCreator() {
     }
   };
 
+  const handleSave = async () => {
+    if (!user) {
+      setShowAuth(true);
+      return;
+    }
+
+    if (!character.name) {
+      toast.error('Por favor, dê um nome ao seu personagem');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      await saveCharacter.mutateAsync(character);
+      navigate('/dashboard');
+    } catch (error) {
+      console.error('Error saving:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   if (showSheet) {
     return (
-      <CharacterSheet 
-        character={character as Character} 
-        onEdit={() => setShowSheet(false)}
-        onUpdateCharacter={updateCharacter}
-      />
+      <div>
+        <CharacterSheet 
+          character={character as Character} 
+          onEdit={() => setShowSheet(false)}
+          onUpdateCharacter={updateCharacter}
+        />
+        {/* Save Button Floating */}
+        <div className="fixed bottom-4 right-4 flex gap-2">
+          <Button variant="outline" onClick={() => navigate('/')}>
+            <Home className="w-4 h-4 mr-2" />
+            Início
+          </Button>
+          <Button className="btn-d20" onClick={handleSave} disabled={isSaving}>
+            {isSaving ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <Save className="w-4 h-4 mr-2" />
+            )}
+            {user ? 'Salvar' : 'Salvar (criar conta)'}
+          </Button>
+        </div>
+        <AuthModal open={showAuth} onOpenChange={setShowAuth} />
+      </div>
     );
   }
 
@@ -77,9 +127,28 @@ export function CharacterCreator() {
       {/* Header */}
       <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4">
-          <h1 className="text-2xl md:text-3xl font-cinzel text-primary text-center">
-            ⚔️ Criador de Personagem D&D 5e
-          </h1>
+          <div className="flex items-center justify-between">
+            <Button variant="ghost" onClick={() => navigate('/')} className="gap-2">
+              <Home className="w-4 h-4" />
+              <span className="hidden md:inline">Início</span>
+            </Button>
+            <h1 className="text-xl md:text-2xl font-cinzel text-primary text-center flex-1">
+              ⚔️ Criador de Personagem
+            </h1>
+            <Button 
+              variant="outline" 
+              onClick={handleSave} 
+              disabled={isSaving || !character.name}
+              className="gap-2"
+            >
+              {isSaving ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4" />
+              )}
+              <span className="hidden md:inline">Salvar</span>
+            </Button>
+          </div>
           <p className="text-muted-foreground text-center text-sm mt-1">Regras 2024</p>
         </div>
       </header>
@@ -150,6 +219,8 @@ export function CharacterCreator() {
           </Button>
         </div>
       </div>
+
+      <AuthModal open={showAuth} onOpenChange={setShowAuth} />
     </div>
   );
 }

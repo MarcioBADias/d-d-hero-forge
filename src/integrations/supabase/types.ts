@@ -14,7 +14,105 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      characters: {
+        Row: {
+          attribute_method: string | null
+          background_ability_bonuses: Json | null
+          background_name: string | null
+          background_story: string | null
+          base_abilities: Json | null
+          classes: Json | null
+          created_at: string
+          feat_ability_bonuses: Json | null
+          feats: string[] | null
+          id: string
+          image_url: string | null
+          is_public: boolean | null
+          level: number
+          name: string
+          race_name: string | null
+          race_options: Json | null
+          share_mode: string | null
+          spells_known: string[] | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          attribute_method?: string | null
+          background_ability_bonuses?: Json | null
+          background_name?: string | null
+          background_story?: string | null
+          base_abilities?: Json | null
+          classes?: Json | null
+          created_at?: string
+          feat_ability_bonuses?: Json | null
+          feats?: string[] | null
+          id?: string
+          image_url?: string | null
+          is_public?: boolean | null
+          level?: number
+          name: string
+          race_name?: string | null
+          race_options?: Json | null
+          share_mode?: string | null
+          spells_known?: string[] | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          attribute_method?: string | null
+          background_ability_bonuses?: Json | null
+          background_name?: string | null
+          background_story?: string | null
+          base_abilities?: Json | null
+          classes?: Json | null
+          created_at?: string
+          feat_ability_bonuses?: Json | null
+          feats?: string[] | null
+          id?: string
+          image_url?: string | null
+          is_public?: boolean | null
+          level?: number
+          name?: string
+          race_name?: string | null
+          race_options?: Json | null
+          share_mode?: string | null
+          spells_known?: string[] | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          id: string
+          theme: string | null
+          updated_at: string
+          user_id: string
+          username: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          id?: string
+          theme?: string | null
+          updated_at?: string
+          user_id: string
+          username?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          id?: string
+          theme?: string | null
+          updated_at?: string
+          user_id?: string
+          username?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

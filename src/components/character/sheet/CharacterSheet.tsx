@@ -15,11 +15,12 @@ interface CharacterSheetProps {
   character: Character;
   onEdit: () => void;
   onUpdateCharacter: (updates: Partial<Character>) => void;
+  readOnly?: boolean;
 }
 
 const abilityKeys: AbilityScore[] = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
 
-export function CharacterSheet({ character, onEdit, onUpdateCharacter }: CharacterSheetProps) {
+export function CharacterSheet({ character, onEdit, onUpdateCharacter, readOnly = false }: CharacterSheetProps) {
   const [showLevelUp, setShowLevelUp] = useState(false);
 
   const proficiencyBonus = calculateProficiencyBonus(character.level);
@@ -125,10 +126,14 @@ export function CharacterSheet({ character, onEdit, onUpdateCharacter }: Charact
       <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <Button variant="ghost" onClick={onEdit} className="gap-2">
-              <Edit className="w-4 h-4" />
-              Editar
-            </Button>
+            {!readOnly ? (
+              <Button variant="ghost" onClick={onEdit} className="gap-2">
+                <Edit className="w-4 h-4" />
+                Editar
+              </Button>
+            ) : (
+              <div />
+            )}
             <h1 className="text-xl md:text-2xl font-cinzel text-primary">
               Ficha do Personagem
             </h1>
@@ -163,40 +168,44 @@ export function CharacterSheet({ character, onEdit, onUpdateCharacter }: Charact
                 <div className="flex-1 text-center md:text-left">
                   <div className="flex items-center justify-center md:justify-start gap-3 mb-2">
                     <h2 className="text-3xl font-cinzel text-primary">{character.name || 'Sem Nome'}</h2>
-                    <Dialog open={showLevelUp} onOpenChange={setShowLevelUp}>
-                      <DialogTrigger asChild>
-                        <Button 
-                          size="sm" 
-                          className="btn-d20 gap-1"
-                          disabled={character.level >= 20}
-                        >
-                          Nv. {character.level}
-                          <ArrowUp className="w-4 h-4" />
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle className="font-cinzel text-primary">
-                            ⬆️ Level Up para Nível {character.level + 1}
-                          </DialogTitle>
-                        </DialogHeader>
-                        <div className="space-y-4">
-                          <p>Ao subir de nível você ganhará:</p>
-                          <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-                            <li>+{Math.floor((classData?.hitDie || 8) / 2) + 1 + conMod} HP</li>
-                            {classData?.features
-                              .filter(f => f.level === character.level + 1)
-                              .map((f, i) => (
-                                <li key={i}>{f.title}</li>
-                              ))
-                            }
-                          </ul>
-                          <Button onClick={handleLevelUp} className="w-full btn-d20">
-                            Confirmar Level Up
+                    {!readOnly ? (
+                      <Dialog open={showLevelUp} onOpenChange={setShowLevelUp}>
+                        <DialogTrigger asChild>
+                          <Button 
+                            size="sm" 
+                            className="btn-d20 gap-1"
+                            disabled={character.level >= 20}
+                          >
+                            Nv. {character.level}
+                            <ArrowUp className="w-4 h-4" />
                           </Button>
-                        </div>
-                      </DialogContent>
-                    </Dialog>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle className="font-cinzel text-primary">
+                              ⬆️ Level Up para Nível {character.level + 1}
+                            </DialogTitle>
+                          </DialogHeader>
+                          <div className="space-y-4">
+                            <p>Ao subir de nível você ganhará:</p>
+                            <ul className="list-disc list-inside space-y-1 text-muted-foreground">
+                              <li>+{Math.floor((classData?.hitDie || 8) / 2) + 1 + conMod} HP</li>
+                              {classData?.features
+                                .filter(f => f.level === character.level + 1)
+                                .map((f, i) => (
+                                  <li key={i}>{f.title}</li>
+                                ))
+                              }
+                            </ul>
+                            <Button onClick={handleLevelUp} className="w-full btn-d20">
+                              Confirmar Level Up
+                            </Button>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                    ) : (
+                      <Badge className="bg-primary/20 text-primary">Nv. {character.level}</Badge>
+                    )}
                   </div>
 
                   <div className="flex flex-wrap gap-2 justify-center md:justify-start mb-3">
