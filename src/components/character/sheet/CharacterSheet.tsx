@@ -1,15 +1,18 @@
 import { useState } from 'react';
+import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Character, abilityLabels, abilityShortLabels, calculateModifier, formatModifier, getTotalAbilityScore, calculateProficiencyBonus, AbilityScore } from '@/types/character';
+import { Character, abilityShortLabels, calculateModifier, formatModifier, getTotalAbilityScore, calculateProficiencyBonus, AbilityScore } from '@/types/character';
 import { characterClasses } from '@/data/classes';
 import { races } from '@/data/races';
 import { backgrounds } from '@/data/backgrounds';
 import { feats } from '@/data/feats';
+import { spells } from '@/data/spells';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { ArrowUp, Download, FileJson, FileText, Edit, Heart, Shield, Zap, Footprints, Star, Sword, Sparkles, User } from 'lucide-react';
+import { ExportDropdown } from '@/components/character/ExportDropdown';
+import { ArrowUp, Edit, Heart, Shield, Footprints, Star, Sword, Sparkles, User, Book } from 'lucide-react';
 
 interface CharacterSheetProps {
   character: Character;
@@ -85,43 +88,16 @@ export function CharacterSheet({ character, onEdit, onUpdateCharacter, readOnly 
     setShowLevelUp(false);
   };
 
-  const exportToJSON = () => {
-    const foundryData = {
-      name: character.name,
-      type: 'character',
-      system: {
-        abilities: {
-          str: { value: getTotalAbilityScore(character.baseAbilities.str, character.backgroundAbilityBonuses.str, character.featAbilityBonuses.str) },
-          dex: { value: getTotalAbilityScore(character.baseAbilities.dex, character.backgroundAbilityBonuses.dex, character.featAbilityBonuses.dex) },
-          con: { value: getTotalAbilityScore(character.baseAbilities.con, character.backgroundAbilityBonuses.con, character.featAbilityBonuses.con) },
-          int: { value: getTotalAbilityScore(character.baseAbilities.int, character.backgroundAbilityBonuses.int, character.featAbilityBonuses.int) },
-          wis: { value: getTotalAbilityScore(character.baseAbilities.wis, character.backgroundAbilityBonuses.wis, character.featAbilityBonuses.wis) },
-          cha: { value: getTotalAbilityScore(character.baseAbilities.cha, character.backgroundAbilityBonuses.cha, character.featAbilityBonuses.cha) },
-        },
-        attributes: {
-          hp: { value: calculateHP(), max: calculateHP() },
-          ac: { value: baseAC },
-        },
-        details: {
-          level: character.level,
-          race: character.raceName,
-          background: character.backgroundName,
-          biography: { value: character.backgroundStory },
-        },
-      },
-    };
-
-    const blob = new Blob([JSON.stringify(foundryData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${character.name || 'character'}_foundry.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
+  // Get known spells info
+  const knownSpells = character.spellsKnown || [];
+  const hasSpells = classData?.spellcasting && knownSpells.length > 0;
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <motion.div 
+      className="min-h-screen bg-background pb-20"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+    >
       {/* Header */}
       <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4">
@@ -137,14 +113,7 @@ export function CharacterSheet({ character, onEdit, onUpdateCharacter, readOnly 
             <h1 className="text-xl md:text-2xl font-cinzel text-primary">
               Ficha do Personagem
             </h1>
-            <div className="flex gap-2">
-              <Button variant="outline" size="icon" onClick={exportToJSON} title="Exportar para Foundry">
-                <FileJson className="w-4 h-4" />
-              </Button>
-              <Button variant="outline" size="icon" title="Exportar PDF (em breve)">
-                <FileText className="w-4 h-4" />
-              </Button>
-            </div>
+            <ExportDropdown character={character} />
           </div>
         </div>
       </header>
@@ -152,8 +121,14 @@ export function CharacterSheet({ character, onEdit, onUpdateCharacter, readOnly 
       <div className="container mx-auto px-4 py-6">
         <div className="max-w-4xl mx-auto space-y-6">
           {/* Character Header */}
-          <Card className="parchment">
-            <CardContent className="p-6">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+          >
+            <Card className="parchment overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-arcane/5 pointer-events-none" />
+              <CardContent className="p-6 relative">
               <div className="flex flex-col md:flex-row gap-6">
                 {/* Portrait */}
                 <div className="w-32 h-32 rounded-lg border-2 border-primary bg-muted flex items-center justify-center overflow-hidden flex-shrink-0 mx-auto md:mx-0">
@@ -245,6 +220,7 @@ export function CharacterSheet({ character, onEdit, onUpdateCharacter, readOnly 
               </div>
             </CardContent>
           </Card>
+          </motion.div>
 
           {/* Ability Scores */}
           <Card className="parchment">
@@ -386,6 +362,6 @@ export function CharacterSheet({ character, onEdit, onUpdateCharacter, readOnly 
           )}
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }
