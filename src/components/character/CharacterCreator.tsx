@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Character, createEmptyCharacter } from '@/types/character';
@@ -9,12 +10,14 @@ import { StepRace } from './steps/StepRace';
 import { StepClass } from './steps/StepClass';
 import { StepAttributes } from './steps/StepAttributes';
 import { StepFeatsSpells } from './steps/StepFeatsSpells';
+import { StepSpells } from './steps/StepSpells';
 import { CharacterSheet } from './sheet/CharacterSheet';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCharacters } from '@/hooks/useCharacters';
 import { AuthModal } from '@/components/auth/AuthModal';
-import { ChevronLeft, ChevronRight, Scroll, Sword, Shield, Sparkles, Dices, BookOpen, Save, Home, Loader2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Scroll, Sword, Shield, Sparkles, Dices, BookOpen, Save, Home, Loader2, Wand2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { characterClasses } from '@/data/classes';
 
 const steps = [
   { id: 1, name: 'Básico', icon: Scroll },
@@ -22,7 +25,8 @@ const steps = [
   { id: 3, name: 'Raça', icon: Sparkles },
   { id: 4, name: 'Classe', icon: Sword },
   { id: 5, name: 'Atributos', icon: Dices },
-  { id: 6, name: 'Feats & Magias', icon: Shield },
+  { id: 6, name: 'Feats', icon: Shield },
+  { id: 7, name: 'Magias', icon: Wand2 },
 ];
 
 export function CharacterCreator() {
@@ -39,9 +43,22 @@ export function CharacterCreator() {
     setCharacter((prev) => ({ ...prev, ...updates }));
   };
 
+  // Check if class is spellcaster
+  const primaryClass = character.classes?.[0];
+  const classData = primaryClass ? characterClasses[primaryClass.className.toLowerCase()] : null;
+  const isSpellcaster = !!classData?.spellcasting;
+
+  // Determine total steps (skip spell step for non-casters)
+  const totalSteps = isSpellcaster ? 7 : 6;
+
   const nextStep = () => {
-    if (currentStep < 6) {
-      setCurrentStep(currentStep + 1);
+    if (currentStep < totalSteps) {
+      // Skip spells step for non-casters
+      if (currentStep === 6 && !isSpellcaster) {
+        setShowSheet(true);
+      } else {
+        setCurrentStep(currentStep + 1);
+      }
     } else {
       setShowSheet(true);
     }
@@ -117,10 +134,15 @@ export function CharacterCreator() {
         return <StepAttributes character={character} updateCharacter={updateCharacter} />;
       case 6:
         return <StepFeatsSpells character={character} updateCharacter={updateCharacter} />;
+      case 7:
+        return <StepSpells character={character} updateCharacter={updateCharacter} />;
       default:
         return null;
     }
   };
+
+  // Filter steps based on whether class is spellcaster
+  const visibleSteps = isSpellcaster ? steps : steps.filter(s => s.id !== 7);
 
   return (
     <div className="min-h-screen bg-background">
@@ -155,20 +177,29 @@ export function CharacterCreator() {
 
       {/* Progress Steps */}
       <div className="container mx-auto px-4 py-6">
-        <div className="flex justify-center mb-8 overflow-x-auto pb-2">
+        <motion.div 
+          className="flex justify-center mb-8 overflow-x-auto pb-2"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
           <div className="flex gap-2 md:gap-4">
-            {steps.map((step) => {
+            {visibleSteps.map((step, index) => {
               const Icon = step.icon;
               const isActive = currentStep === step.id;
               const isCompleted = currentStep > step.id;
               
               return (
-                <button
+                <motion.button
                   key={step.id}
                   onClick={() => setCurrentStep(step.id)}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.05 }}
                   className={`
                     flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-all
-                    ${isActive ? 'bg-primary text-primary-foreground scale-105' : ''}
+                    ${isActive ? 'bg-primary text-primary-foreground scale-105 shadow-lg' : ''}
                     ${isCompleted ? 'bg-accent text-accent-foreground' : ''}
                     ${!isActive && !isCompleted ? 'bg-muted text-muted-foreground hover:bg-muted/80' : ''}
                   `}
@@ -176,30 +207,45 @@ export function CharacterCreator() {
                   <Icon className="w-5 h-5 md:w-6 md:h-6" />
                   <span className="text-xs font-medium hidden md:block">{step.name}</span>
                   <span className="text-xs font-medium md:hidden">{step.id}</span>
-                </button>
+                </motion.button>
               );
             })}
           </div>
-        </div>
+        </motion.div>
 
         {/* Step Content */}
-        <Card className="parchment max-w-4xl mx-auto animate-fade-in">
-          <CardHeader className="border-b border-border">
-            <CardTitle className="font-cinzel text-primary flex items-center gap-2">
-              {(() => {
-                const StepIcon = steps[currentStep - 1].icon;
-                return <StepIcon className="w-6 h-6" />;
-              })()}
-              Etapa {currentStep}: {steps[currentStep - 1].name}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-6">
-            {renderStep()}
-          </CardContent>
-        </Card>
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={currentStep}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.2 }}
+          >
+            <Card className="parchment max-w-4xl mx-auto">
+              <CardHeader className="border-b border-border">
+                <CardTitle className="font-cinzel text-primary flex items-center gap-2">
+                  {(() => {
+                    const StepIcon = visibleSteps.find(s => s.id === currentStep)?.icon || Scroll;
+                    return <StepIcon className="w-6 h-6" />;
+                  })()}
+                  Etapa {currentStep}: {visibleSteps.find(s => s.id === currentStep)?.name}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6">
+                {renderStep()}
+              </CardContent>
+            </Card>
+          </motion.div>
+        </AnimatePresence>
 
         {/* Navigation */}
-        <div className="flex justify-between max-w-4xl mx-auto mt-6 px-4">
+        <motion.div 
+          className="flex justify-between max-w-4xl mx-auto mt-6 px-4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.3 }}
+        >
           <Button
             variant="outline"
             onClick={prevStep}
@@ -214,10 +260,10 @@ export function CharacterCreator() {
             onClick={nextStep}
             className="btn-d20 gap-2"
           >
-            {currentStep === 6 ? 'Ver Ficha' : 'Próximo'}
+            {currentStep === totalSteps ? 'Ver Ficha' : 'Próximo'}
             <ChevronRight className="w-4 h-4" />
           </Button>
-        </div>
+        </motion.div>
       </div>
 
       <AuthModal open={showAuth} onOpenChange={setShowAuth} />
