@@ -1,4 +1,3 @@
-// SRD 5.2 Spells - Official D&D 2024 Spells
 export interface SRDSpell {
   name: string;
   level: number;
