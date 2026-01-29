@@ -1,12 +1,9 @@
 import { useState } from 'react';
-import { Label } from '@/components/ui/label';
-import { Character, AbilityScore } from '@/types/character';
+import { Character } from '@/types/character';
 import { feats, originFeats, generalFeats } from '@/data/feats';
 import { backgrounds } from '@/data/backgrounds';
-import { characterClasses } from '@/data/classes';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronDown, Sparkles, Gift, Star } from 'lucide-react';
@@ -222,23 +219,6 @@ export function StepFeatsSpells({ character, updateCharacter }: StepFeatsSpellsP
             </ScrollArea>
           </CollapsibleContent>
         </Collapsible>
-      )}
-
-      {/* Spells Section Placeholder */}
-      {character.classes?.some(c => {
-        const classData = characterClasses[c.className.toLowerCase()];
-        return classData?.spellcasting;
-      }) && (
-        <div className="p-4 rounded-lg bg-arcane/10 border border-arcane/30">
-          <h4 className="font-cinzel text-arcane mb-2 flex items-center gap-2">
-            <Sparkles className="w-5 h-5" />
-            Sistema de Magias
-          </h4>
-          <p className="text-sm text-muted-foreground">
-            O sistema completo de seleção de magias será implementado em breve!
-            Suas classes conjuradoras terão acesso a cantrips e spells baseados no nível.
-          </p>
-        </div>
       )}
     </div>
   );
