@@ -7,9 +7,9 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Sparkles, Plus, Check, ChevronDown, Search, Clock, Target, Book } from 'lucide-react';
+import { Sparkles, Plus, Check, ChevronDown, Search, Clock, Target, Book, Zap, X } from 'lucide-react';
 import { SpellSlotState, classSpellcastingRules, calculateModifier, getTotalAbilityScore, AbilityScores, AbilityBonuses } from '@/types/character';
-import { srdSpells, SRDSpell, spellSlotsTable, getMaxSpellLevel } from '@/data/srdSpells';
+import { srdSpells, SRDSpell, spellSlotsTable, getMaxSpellLevel, getAutoPopulateSpells } from '@/data/srdSpells';
 import { cn } from '@/lib/utils';
 
 interface SpellManagerProps {
@@ -117,6 +117,11 @@ export function SpellManager({
     onPreparedSpellsChange(preparedSpells.filter(s => s !== spellName));
   };
 
+  const handleAutoPopulate = () => {
+    const autoSpells = getAutoPopulateSpells(className, classLevel, maxSpellLevel);
+    onSpellsKnownChange([...new Set([...spellsKnown, ...autoSpells])]);
+  };
+
   const togglePrepared = (spellName: string) => {
     if (preparedSpells.includes(spellName)) {
       onPreparedSpellsChange(preparedSpells.filter(s => s !== spellName));
@@ -137,19 +142,32 @@ export function SpellManager({
   return (
     <Card className="parchment">
       <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           <CardTitle className="font-cinzel text-primary flex items-center gap-2">
             <Sparkles className="w-5 h-5" />
             Magias
           </CardTitle>
-          {!readOnly && (
-            <Dialog open={showAddSpell} onOpenChange={setShowAddSpell}>
-              <DialogTrigger asChild>
-                <Button size="sm" className="gap-1">
-                  <Plus className="w-4 h-4" />
-                  Adicionar Magia
-                </Button>
-              </DialogTrigger>
+          <div className="flex gap-2">
+            {!readOnly && getAutoPopulateSpells(className, classLevel, maxSpellLevel).length > 0 && (
+              <Button 
+                size="sm" 
+                variant="outline"
+                className="gap-1"
+                onClick={handleAutoPopulate}
+                title="Adicionar todas as magias conhecidas para esta classe"
+              >
+                <Zap className="w-4 h-4" />
+                Auto-popular
+              </Button>
+            )}
+            {!readOnly && (
+              <Dialog open={showAddSpell} onOpenChange={setShowAddSpell}>
+                <DialogTrigger asChild>
+                  <Button size="sm" className="gap-1">
+                    <Plus className="w-4 h-4" />
+                    Adicionar Magia
+                  </Button>
+                </DialogTrigger>
               <DialogContent className="max-w-2xl max-h-[80vh] parchment">
                 <DialogHeader>
                   <DialogTitle className="font-cinzel text-primary">Adicionar Magia</DialogTitle>
@@ -206,7 +224,8 @@ export function SpellManager({
                 </div>
               </DialogContent>
             </Dialog>
-          )}
+            )}
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -290,19 +309,37 @@ export function SpellManager({
                                     togglePrepared(spell.name);
                                   }}
                                   className={cn(
-                                    "w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0",
-                                    isPrepared ? "bg-primary border-primary" : "border-muted-foreground"
+                                    "w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all",
+                                    isPrepared ? "bg-primary border-primary" : "border-muted-foreground hover:border-primary"
                                   )}
+                                  title={isPrepared ? 'Preparada' : 'Clique para preparar'}
                                 >
                                   {isPrepared && <Check className="w-3 h-3 text-primary-foreground" />}
                                 </button>
                               )}
-                              <span className="font-medium flex-1">{spell.name}</span>
+                              <span className="font-medium flex-1 flex items-center gap-2">
+                                {spell.name}
+                                {isPrepared && isPreparedCaster && (
+                                  <Badge variant="default" className="text-xs bg-primary/80">Prep.</Badge>
+                                )}
+                              </span>
                               <Badge className={cn("text-xs", schoolColors[spell.school])}>
                                 {spell.school}
                               </Badge>
                               {spell.concentration && (
                                 <Badge variant="outline" className="text-xs">C</Badge>
+                              )}
+                              {!readOnly && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    removeSpell(spell.name);
+                                  }}
+                                  className="text-muted-foreground hover:text-destructive transition-colors"
+                                  title="Remover magia"
+                                >
+                                  <X className="w-4 h-4" />
+                                </button>
                               )}
                               <ChevronDown className={cn(
                                 "w-4 h-4 transition-transform",

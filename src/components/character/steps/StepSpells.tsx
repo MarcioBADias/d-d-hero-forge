@@ -209,16 +209,17 @@ export function StepSpells({ character, updateCharacter }: StepSpellsProps) {
                           <Button
                             size="icon"
                             variant={isSpellSelected(spell.name) ? 'default' : 'outline'}
-                            className="shrink-0 w-8 h-8"
+                            className="shrink-0 w-8 h-8 transition-all hover:scale-110"
                             onClick={(e) => {
                               e.stopPropagation();
                               toggleSpell(spell.name);
                             }}
+                            title={isSpellSelected(spell.name) ? 'Remover magia' : 'Adicionar magia'}
                           >
                             {isSpellSelected(spell.name) ? (
                               <Check className="w-4 h-4" />
                             ) : (
-                              <Sparkles className="w-4 h-4" />
+                              <span className="text-lg leading-none">+</span>
                             )}
                           </Button>
                           

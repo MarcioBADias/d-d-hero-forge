@@ -1782,3 +1782,23 @@ export const schoolColors: Record<string, string> = {
   necromancy: 'bg-gray-500/20 text-gray-300 border-gray-500/30',
   transmutation: 'bg-green-500/20 text-green-300 border-green-500/30',
 };
+
+// Classes that have access to all spells of their spell list (prepared casters with full access)
+const fullAccessClasses = ['cleric', 'druid', 'paladin'];
+
+export function getAutoPopulateSpells(className: string, classLevel: number, maxSpellLevel: number): string[] {
+  const lowerClassName = className.toLowerCase();
+  
+  // Only auto-populate for classes with full access
+  if (!fullAccessClasses.includes(lowerClassName)) {
+    return [];
+  }
+  
+  // Get all spells for this class up to max spell level
+  return srdSpells
+    .filter(spell => 
+      spell.classes.some(c => c.toLowerCase() === lowerClassName) &&
+      spell.level <= maxSpellLevel
+    )
+    .map(spell => spell.name);
+}

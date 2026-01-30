@@ -160,7 +160,10 @@ export default function Dashboard() {
                   whileHover={{ y: -4 }}
                   transition={{ type: 'spring', stiffness: 300 }}
                 >
-                  <Card className="parchment hover:shadow-lg hover:border-primary/30 transition-all overflow-hidden group">
+                  <Card 
+                    className="parchment hover:shadow-lg hover:border-primary/30 transition-all overflow-hidden group cursor-pointer"
+                    onClick={() => navigate(`/character/${char.id}`)}
+                  >
                     {/* Glow effect on hover */}
                     <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-arcane/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
                     
