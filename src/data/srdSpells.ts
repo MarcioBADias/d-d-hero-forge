@@ -1737,7 +1737,22 @@ export const cantripsKnown: Record<string, number[]> = {
   wizard: [3, 3, 3, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5],
 };
 
-export function getMaxSpellLevel(classLevel: number, castingType: 'full' | 'half' | 'third' | 'pact'): number {
+type CastingType = 'full' | 'half' | 'third' | 'pact';
+
+const classCastingTypes: Record<string, CastingType> = {
+  bard: 'full',
+  cleric: 'full',
+  druid: 'full',
+  sorcerer: 'full',
+  wizard: 'full',
+  warlock: 'pact',
+  paladin: 'half',
+  ranger: 'half',
+};
+
+export function getMaxSpellLevel(classLevel: number, classNameOrType: string): number {
+  const castingType = classCastingTypes[classNameOrType.toLowerCase()] || classNameOrType as CastingType;
+  
   if (castingType === 'full') {
     return Math.min(9, Math.ceil(classLevel / 2));
   } else if (castingType === 'half') {
