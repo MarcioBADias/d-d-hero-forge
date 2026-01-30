@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Character, abilityShortLabels, calculateModifier, formatModifier, getTotalAbilityScore, calculateProficiencyBonus, AbilityScore, DeathSaves, Coins, SpellSlotState } from '@/types/character';
@@ -14,7 +16,7 @@ import { ExportDropdown } from '@/components/character/ExportDropdown';
 import { HpTracker } from './HpTracker';
 import { InventoryCoins } from './InventoryCoins';
 import { SpellManager } from './SpellManager';
-import { ArrowUp, Edit, Shield, Footprints, Star, Sword, Sparkles, User } from 'lucide-react';
+import { ArrowUp, Edit, Shield, Footprints, Star, Sword, Sparkles, User, Wrench } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface CharacterSheetProps {
@@ -28,6 +30,9 @@ const abilityKeys: AbilityScore[] = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
 
 export function CharacterSheet({ character, onEdit, onUpdateCharacter, readOnly = false }: CharacterSheetProps) {
   const [showLevelUp, setShowLevelUp] = useState(false);
+  const [isEditable, setIsEditable] = useState(false);
+
+  const effectiveReadOnly = !isEditable;
 
   const proficiencyBonus = calculateProficiencyBonus(character.level);
   const primaryClass = character.classes[0];
@@ -89,11 +94,21 @@ export function CharacterSheet({ character, onEdit, onUpdateCharacter, readOnly 
       <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            {!readOnly ? (
-              <Button variant="ghost" onClick={onEdit} className="gap-2">
-                <Edit className="w-4 h-4" />Editar
+            <div className="flex items-center gap-2">
+              {!readOnly ? (
+                <Button variant="ghost" onClick={onEdit} className="gap-2">
+                  <Edit className="w-4 h-4" />Editar
+                </Button>
+              ) : <div />}
+              <Button
+                variant={isEditable ? 'default' : 'ghost'}
+                onClick={() => setIsEditable(!isEditable)}
+                className="gap-2"
+                aria-pressed={isEditable}
+              >
+                <Wrench className="w-4 h-4" /> {isEditable ? 'Modo Editável' : 'Ativar Edição'}
               </Button>
-            ) : <div />}
+            </div>
             <h1 className="text-xl md:text-2xl font-cinzel text-primary">Ficha do Personagem</h1>
             <ExportDropdown character={character} />
           </div>
@@ -115,7 +130,16 @@ export function CharacterSheet({ character, onEdit, onUpdateCharacter, readOnly 
                 </div>
                 <div className="flex-1 text-center md:text-left">
                   <div className="flex items-center justify-center md:justify-start gap-3 mb-2">
-                    <h2 className="text-3xl font-cinzel text-primary">{character.name || 'Sem Nome'}</h2>
+                    {!effectiveReadOnly ? (
+                      <Input
+                        value={character.name || ''}
+                        onChange={(e) => onUpdateCharacter({ name: e.target.value })}
+                        className="text-3xl font-cinzel text-primary p-0 bg-transparent border-0"
+                        placeholder="Sem Nome"
+                      />
+                    ) : (
+                      <h2 className="text-3xl font-cinzel text-primary">{character.name || 'Sem Nome'}</h2>
+                    )}
                     {!readOnly && (
                       <Dialog open={showLevelUp} onOpenChange={setShowLevelUp}>
                         <DialogTrigger asChild>
@@ -175,7 +199,7 @@ export function CharacterSheet({ character, onEdit, onUpdateCharacter, readOnly 
             deathSaves={deathSaves}
             onHpChange={(hp, temp) => onUpdateCharacter({ currentHp: hp, tempHp: temp })}
             onDeathSavesChange={(saves) => onUpdateCharacter({ deathSaves: saves })}
-            readOnly={readOnly}
+            readOnly={effectiveReadOnly}
           />
 
           {/* Ability Scores */}
@@ -214,7 +238,7 @@ export function CharacterSheet({ character, onEdit, onUpdateCharacter, readOnly 
               onSpellsKnownChange={(spells) => onUpdateCharacter({ spellsKnown: spells })}
               onPreparedSpellsChange={(spells) => onUpdateCharacter({ preparedSpells: spells })}
               onSpellSlotsChange={(slots) => onUpdateCharacter({ spellSlots: slots })}
-              readOnly={readOnly}
+              readOnly={effectiveReadOnly}
             />
           )}
 
@@ -224,7 +248,7 @@ export function CharacterSheet({ character, onEdit, onUpdateCharacter, readOnly 
             coins={coins}
             onInventoryChange={(inv) => onUpdateCharacter({ inventory: inv })}
             onCoinsChange={(c) => onUpdateCharacter({ coins: c })}
-            readOnly={readOnly}
+            readOnly={effectiveReadOnly}
           />
 
           {/* Features */}
@@ -292,10 +316,20 @@ export function CharacterSheet({ character, onEdit, onUpdateCharacter, readOnly 
             </CardContent>
           </Card>
 
-          {character.backgroundStory && (
+          {character.backgroundStory !== undefined && (
             <Card className="parchment">
               <CardHeader><CardTitle className="font-cinzel text-primary">História</CardTitle></CardHeader>
-              <CardContent><p className="text-muted-foreground whitespace-pre-wrap">{character.backgroundStory}</p></CardContent>
+              <CardContent>
+                {!effectiveReadOnly ? (
+                  <Textarea
+                    value={character.backgroundStory || ''}
+                    onChange={(e) => onUpdateCharacter({ backgroundStory: e.target.value })}
+                    className="min-h-[120px] resize-none"
+                  />
+                ) : (
+                  <p className="text-muted-foreground whitespace-pre-wrap">{character.backgroundStory}</p>
+                )}
+              </CardContent>
             </Card>
           )}
         </div>
