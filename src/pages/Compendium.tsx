@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Footer } from '@/components/layout/Footer';
 import { 
   Search, 
   Sword, 
@@ -516,6 +517,8 @@ export default function Compendium() {
           </ScrollArea>
         </DialogContent>
       </Dialog>
+
+      <Footer />
     </div>
   );
 }
