@@ -76,13 +76,20 @@ export interface Character {
   
   // Equipment
   selectedEquipment?: string[];
-  armorAC?: number; // AC bonus from armor (e.g., 14 from Breastplate)
-  shieldAC?: number; // AC bonus from shield (e.g., 2 from Shield)
-  equippedArmor?: string; // Name of equipped armor
-  equippedShield?: string; // Name of equipped shield
+  customEquipment?: { name: string; description: string; type: 'mundane' | 'magic' | 'custom' }[];
+  armorEquipStates?: Record<string, boolean>;
+  armorAC?: number;
+  shieldAC?: number;
+  equippedArmor?: string;
+  equippedShield?: string;
   
   // Weapons
-  equippedWeapon?: string; // Name of equipped weapon
+  equippedWeapons?: string[];
+  weaponEquipStates?: Record<string, boolean>;
+  equippedWeapon?: string; // Deprecated - use equippedWeapons
+  
+  // Adventure notes
+  adventureNotes?: string;
   
   // Combat tracking
   currentHp?: number;
@@ -174,11 +181,15 @@ export function createEmptyCharacter(): Partial<Character> {
     spellsKnown: [],
     preparedSpells: [],
     selectedEquipment: [],
-    equippedWeapon: undefined,
+    customEquipment: [],
+    equippedWeapons: [],
+    weaponEquipStates: {},
+    armorEquipStates: {},
     currentHp: undefined,
     tempHp: 0,
     deathSaves: { successes: 0, failures: 0 },
     inventory: '',
+    adventureNotes: '',
     coins: { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 },
   };
 }

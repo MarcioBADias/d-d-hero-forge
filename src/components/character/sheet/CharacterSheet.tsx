@@ -10,15 +10,15 @@ import { characterClasses } from '@/data/classes';
 import { races } from '@/data/races';
 import { backgrounds } from '@/data/backgrounds';
 import { feats } from '@/data/feats';
-import { allWeapons, calculateAttackBonus, calculateDamage } from '@/data/weapons';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ExportDropdown } from '@/components/character/ExportDropdown';
-import { EquipmentModal } from './EquipmentModal';
 import { HpTracker } from './HpTracker';
 import { InventoryCoins } from './InventoryCoins';
 import { SpellManager } from './SpellManager';
-import { ArrowUp, Edit, Shield, Footprints, Star, Sword, Sparkles, User, Wrench, Package } from 'lucide-react';
+import { AttackSection } from './AttackSection';
+import { EquipmentSection } from './EquipmentSection';
+import { ArrowUp, Edit, Shield, Footprints, Star, Sword, Sparkles, User, Wrench, BookOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface CharacterSheetProps {
@@ -66,6 +66,7 @@ export function CharacterSheet({ character, onEdit, onUpdateCharacter, readOnly 
   const inventory = character.inventory ?? '';
   const coins = character.coins ?? { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 };
   const spellSlots = character.spellSlots ?? {};
+  const adventureNotes = character.adventureNotes ?? '';
   
   const dexMod = calculateModifier(getTotalAbilityScore(character.baseAbilities.dex, character.backgroundAbilityBonuses.dex, character.featAbilityBonuses.dex));
   const baseAC = 10 + dexMod;
@@ -230,128 +231,105 @@ export function CharacterSheet({ character, onEdit, onUpdateCharacter, readOnly 
             readOnly={effectiveReadOnly}
           />
 
-          {/* Weapon & Combat */}
-          {character.equippedWeapon && (
-            <Card className="parchment bg-gradient-to-r from-destructive/5 to-orange-500/5">
-              <CardHeader><CardTitle className="font-cinzel text-primary flex items-center gap-2"><Sword className="w-5 h-5" />Arma em Mão</CardTitle></CardHeader>
-              <CardContent>
-                {(() => {
-                  const weapon = allWeapons.find(w => w.name === character.equippedWeapon);
-                  if (!weapon) return null;
-
-                  const strMod = calculateModifier(getTotalAbilityScore(character.baseAbilities.str, character.backgroundAbilityBonuses.str, character.featAbilityBonuses.str));
-                  const dexMod = calculateModifier(getTotalAbilityScore(character.baseAbilities.dex, character.backgroundAbilityBonuses.dex, character.featAbilityBonuses.dex));
-                  
-                  // Determine if character has proficiency (for now, assume martial proficiency at level 1)
-                  const hasMartialProficiency = character.classes?.[0]?.className?.toLowerCase() !== 'wizard' && character.classes?.[0]?.className?.toLowerCase() !== 'sorcerer';
-                  const hasWeaponProficiency = weapon.category === 'Simple' || (hasMartialProficiency && weapon.category === 'Martial');
-                  
-                  const attackBonus = calculateAttackBonus(weapon, strMod, dexMod, proficiencyBonus, hasWeaponProficiency);
-                  const damageRoll = calculateDamage(weapon, strMod, dexMod);
-
-                  return (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="p-4 rounded-lg bg-background/50 border border-border">
-                        <p className="text-xs text-muted-foreground uppercase font-semibold mb-2">Arma</p>
-                        <p className="text-lg font-semibold">{weapon.name}</p>
-                        <Badge variant="outline" className="mt-2">{weapon.type}</Badge>
-                      </div>
-                      
-                      <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/30">
-                        <p className="text-xs text-muted-foreground uppercase font-semibold mb-2">Bônus de Ataque</p>
-                        <p className="text-2xl font-bold text-destructive">{formatModifier(attackBonus)}</p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {weapon.abilityModifier === 'finesse' 
-                            ? `${formatModifier(Math.max(strMod, dexMod))} (habilidade)` 
-                            : weapon.abilityModifier === 'str'
-                            ? `${formatModifier(strMod)} (FOR)`
-                            : `${formatModifier(dexMod)} (DEX)`}
-                          {hasWeaponProficiency && ` + ${formatModifier(proficiencyBonus)} (proficiência)`}
-                        </p>
-                      </div>
-                      
-                      <div className="p-4 rounded-lg bg-orange-500/10 border border-orange-500/30">
-                        <p className="text-xs text-muted-foreground uppercase font-semibold mb-2">Dano</p>
-                        <p className="text-xl font-bold text-orange-600 dark:text-orange-400">{damageRoll}</p>
-                        <p className="text-xs text-muted-foreground mt-1">{weapon.damageType}</p>
-                      </div>
-                      
-                      {weapon.properties.length > 0 && (
-                        <div className="md:col-span-3">
-                          <p className="text-xs text-muted-foreground uppercase font-semibold mb-2">Propriedades</p>
-                          <div className="flex flex-wrap gap-2">
-                            {weapon.properties.map((prop) => (
-                              <Badge key={prop} variant="secondary" className="text-xs">
-                                {prop}
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="md:col-span-3">
-                        <p className="text-xs text-muted-foreground uppercase font-semibold mb-2">Mestria</p>
-                        <p className="text-sm text-muted-foreground">{weapon.mastery}</p>
-                      </div>
-                    </div>
-                  );
-                })()}
-              </CardContent>
-            </Card>
-          )}
+          {/* Attack Section */}
+          <AttackSection
+            equippedWeapons={character.equippedWeapons || []}
+            weaponEquipStates={character.weaponEquipStates || {}}
+            baseAbilities={character.baseAbilities}
+            backgroundBonuses={character.backgroundAbilityBonuses}
+            featBonuses={character.featAbilityBonuses}
+            proficiencyBonus={proficiencyBonus}
+            characterClass={primaryClass?.className || ''}
+            onToggleWeapon={(weaponName, equipped) => {
+              onUpdateCharacter({
+                weaponEquipStates: {
+                  ...character.weaponEquipStates,
+                  [weaponName]: equipped,
+                },
+              });
+            }}
+            onAddWeapon={(weaponName) => {
+              const current = character.equippedWeapons || [];
+              if (!current.includes(weaponName)) {
+                onUpdateCharacter({
+                  equippedWeapons: [...current, weaponName],
+                  weaponEquipStates: {
+                    ...character.weaponEquipStates,
+                    [weaponName]: true,
+                  },
+                });
+              }
+            }}
+            onRemoveWeapon={(weaponName) => {
+              const current = character.equippedWeapons || [];
+              const newStates = { ...character.weaponEquipStates };
+              delete newStates[weaponName];
+              onUpdateCharacter({
+                equippedWeapons: current.filter(w => w !== weaponName),
+                weaponEquipStates: newStates,
+              });
+            }}
+            readOnly={effectiveReadOnly}
+          />
 
           {/* Equipment Section */}
-          <Card className="parchment">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="font-cinzel text-primary flex items-center gap-2">
-                  <Package className="w-5 h-5" />Equipamento
-                </CardTitle>
-                {!effectiveReadOnly && (
-                  <EquipmentModal
-                    selectedEquipment={character.selectedEquipment || []}
-                    onAddEquipment={(equipmentName) => {
-                      const current = character.selectedEquipment || [];
-                      if (!current.includes(equipmentName)) {
-                        onUpdateCharacter({ selectedEquipment: [...current, equipmentName] });
-                      }
-                    }}
-                    onRemoveEquipment={(equipmentName) => {
-                      const current = character.selectedEquipment || [];
-                      onUpdateCharacter({ selectedEquipment: current.filter(e => e !== equipmentName) });
-                    }}
-                  />
-                )}
-              </div>
-            </CardHeader>
-            <CardContent>
-              {(character.selectedEquipment && character.selectedEquipment.length > 0) ? (
-                <div className="space-y-3">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {character.selectedEquipment.map((itemName) => (
-                      <div key={itemName} className="p-3 rounded-lg bg-background/30 border border-border flex items-center justify-between">
-                        <span className="font-medium text-sm">{itemName}</span>
-                        {!effectiveReadOnly && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              const current = character.selectedEquipment || [];
-                              onUpdateCharacter({ selectedEquipment: current.filter(e => e !== itemName) });
-                            }}
-                          >
-                            ✕
-                          </Button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground italic">Nenhum equipamento selecionado</p>
-              )}
-            </CardContent>
-          </Card>
+          <EquipmentSection
+            selectedEquipment={character.selectedEquipment || []}
+            customEquipment={character.customEquipment || []}
+            armorEquipStates={character.armorEquipStates || {}}
+            equippedArmor={character.equippedArmor}
+            equippedShield={character.equippedShield}
+            dexModifier={dexMod}
+            onAddEquipment={(name, type, description) => {
+              const current = character.selectedEquipment || [];
+              if (!current.includes(name)) {
+                if (type === 'custom' && description) {
+                  const customItems = character.customEquipment || [];
+                  onUpdateCharacter({
+                    selectedEquipment: [...current, name],
+                    customEquipment: [...customItems, { name, description, type }],
+                  });
+                } else {
+                  onUpdateCharacter({ selectedEquipment: [...current, name] });
+                }
+              }
+            }}
+            onRemoveEquipment={(name) => {
+              const current = character.selectedEquipment || [];
+              const customItems = character.customEquipment || [];
+              const newArmorStates = { ...character.armorEquipStates };
+              delete newArmorStates[name];
+              
+              onUpdateCharacter({
+                selectedEquipment: current.filter(e => e !== name),
+                customEquipment: customItems.filter(c => c.name !== name),
+                armorEquipStates: newArmorStates,
+                equippedArmor: character.equippedArmor === name ? undefined : character.equippedArmor,
+                equippedShield: character.equippedShield === name ? undefined : character.equippedShield,
+              });
+            }}
+            onToggleArmor={(name, equipped) => {
+              onUpdateCharacter({
+                armorEquipStates: {
+                  ...character.armorEquipStates,
+                  [name]: equipped,
+                },
+              });
+            }}
+            onEquipArmor={(armorName, ac) => {
+              onUpdateCharacter({
+                equippedArmor: armorName,
+                armorAC: armorName ? ac : undefined,
+              });
+            }}
+            onEquipShield={(shieldName, ac) => {
+              onUpdateCharacter({
+                equippedShield: shieldName,
+                shieldAC: shieldName ? ac : undefined,
+              });
+            }}
+            readOnly={effectiveReadOnly}
+          />
 
           {/* Ability Scores */}
           <Card className="parchment">
@@ -408,6 +386,23 @@ export function CharacterSheet({ character, onEdit, onUpdateCharacter, readOnly 
               readOnly={effectiveReadOnly}
             />
           )}
+
+          {/* Adventure Notes */}
+          <Card className="parchment">
+            <CardHeader><CardTitle className="font-cinzel text-primary flex items-center gap-2"><BookOpen className="w-5 h-5" />Detalhes da Aventura</CardTitle></CardHeader>
+            <CardContent>
+              {!effectiveReadOnly ? (
+                <Textarea
+                  value={adventureNotes}
+                  onChange={(e) => onUpdateCharacter({ adventureNotes: e.target.value })}
+                  placeholder="Anote rascunhos, observações sobre a campanha, NPCs importantes..."
+                  className="min-h-[100px] resize-none"
+                />
+              ) : (
+                <p className="text-muted-foreground whitespace-pre-wrap">{adventureNotes || 'Nenhuma anotação'}</p>
+              )}
+            </CardContent>
+          </Card>
 
           {/* Inventory & Coins */}
           <InventoryCoins
