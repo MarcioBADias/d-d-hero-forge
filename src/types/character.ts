@@ -66,6 +66,8 @@ export interface Character {
   // Feats
   feats: string[];
   featAbilityBonuses: AbilityBonuses;
+  // Map feat name -> selected ability for feats that grant a choice (e.g. "Str/Dex +1")
+  featSelections?: Record<string, AbilityScore>;
   
   // Spells (for casters)
   spellsKnown?: string[];
@@ -158,6 +160,7 @@ export function createEmptyCharacter(): Partial<Character> {
     baseAbilities: { str: 8, dex: 8, con: 8, int: 8, wis: 8, cha: 8 },
     feats: [],
     featAbilityBonuses: { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 },
+    featSelections: {},
     spellsKnown: [],
     preparedSpells: [],
     currentHp: undefined,

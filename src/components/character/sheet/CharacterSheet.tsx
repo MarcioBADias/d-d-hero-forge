@@ -208,13 +208,29 @@ export function CharacterSheet({ character, onEdit, onUpdateCharacter, readOnly 
             <CardContent>
               <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
                 {abilityKeys.map(key => {
-                  const total = getTotalAbilityScore(character.baseAbilities[key], character.backgroundAbilityBonuses[key], character.featAbilityBonuses[key]);
+                  const baseValue = character.baseAbilities[key];
+                  const total = getTotalAbilityScore(baseValue, character.backgroundAbilityBonuses[key], character.featAbilityBonuses[key]);
                   const mod = calculateModifier(total);
                   const saveProficient = classData?.savingThrows.some(s => s.toLowerCase().startsWith(key));
                   return (
                     <div key={key} className="text-center p-3 rounded-lg bg-background/30 border border-border">
                       <p className="text-xs text-muted-foreground uppercase font-semibold">{abilityShortLabels[key]}</p>
-                      <p className="text-3xl font-bold text-primary">{total}</p>
+                      {!effectiveReadOnly ? (
+                        <Input
+                          type="number"
+                          value={baseValue}
+                          onChange={(e) => {
+                            const newAbilities = { ...character.baseAbilities };
+                            newAbilities[key] = Math.max(1, Math.min(20, parseInt(e.target.value) || 0));
+                            onUpdateCharacter({ baseAbilities: newAbilities });
+                          }}
+                          className="text-center text-2xl font-bold p-0 bg-transparent border-0 text-primary h-auto mb-1"
+                          min="1"
+                          max="20"
+                        />
+                      ) : (
+                        <p className="text-3xl font-bold text-primary">{total}</p>
+                      )}
                       <p className={`text-lg font-semibold ${mod >= 0 ? 'text-nature' : 'text-destructive'}`}>{formatModifier(mod)}</p>
                       <p className="text-xs text-muted-foreground mt-1">Save: {formatModifier(mod + (saveProficient ? proficiencyBonus : 0))}{saveProficient && ' ●'}</p>
                     </div>

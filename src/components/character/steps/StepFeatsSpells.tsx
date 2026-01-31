@@ -1,9 +1,13 @@
 import { useState } from 'react';
-import { Character } from '@/types/character';
+import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Character, AbilityScore } from '@/types/character';
 import { feats, originFeats, generalFeats } from '@/data/feats';
 import { backgrounds } from '@/data/backgrounds';
+import { characterClasses } from '@/data/classes';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronDown, Sparkles, Gift, Star } from 'lucide-react';
@@ -15,6 +19,9 @@ interface StepFeatsSpellsProps {
 
 export function StepFeatsSpells({ character, updateCharacter }: StepFeatsSpellsProps) {
   const [openSections, setOpenSections] = useState<string[]>(['origin', 'background']);
+  const [pendingFeat, setPendingFeat] = useState<string | null>(null);
+  const [showChoiceDialog, setShowChoiceDialog] = useState(false);
+  const [choiceValue, setChoiceValue] = useState<string>('');
   
   const selectedFeats = character.feats || [];
   const level = character.level || 1;
@@ -27,11 +34,77 @@ export function StepFeatsSpells({ character, updateCharacter }: StepFeatsSpellsP
   const availableASIs = asiLevels.filter(l => l <= level).length;
 
   const toggleFeat = (featName: string) => {
-    const newFeats = selectedFeats.includes(featName)
-      ? selectedFeats.filter(f => f !== featName)
-      : [...selectedFeats, featName];
-    
-    updateCharacter({ feats: newFeats });
+    const feat = feats[featName];
+    const isRemoving = selectedFeats.includes(featName);
+
+    if (isRemoving) {
+      // Remove feat and revert any applied ability bonus if we have a recorded selection
+      const newFeats = selectedFeats.filter(f => f !== featName);
+      const newFeatBonuses = { ...(character.featAbilityBonuses || { str:0,dex:0,con:0,int:0,wis:0,cha:0 }) };
+      const newSelections = { ...(character.featSelections || {}) };
+      const selectedAbility = newSelections[featName];
+      if (selectedAbility && feat?.abilityScoreIncrease) {
+        // parse amount
+        const m = feat.abilityScoreIncrease.match(/\+([0-9]+)/);
+        const amount = m ? parseInt(m[1], 10) : 1;
+        newFeatBonuses[selectedAbility as any] = Math.max(0, (newFeatBonuses[selectedAbility as any] || 0) - amount);
+        delete newSelections[featName];
+      }
+      updateCharacter({ feats: newFeats, featAbilityBonuses: newFeatBonuses, featSelections: newSelections });
+      return;
+    }
+
+    // Adding a feat
+    if (!feat || !feat.abilityScoreIncrease) {
+      updateCharacter({ feats: [...selectedFeats, featName] });
+      return;
+    }
+
+    // Parse ability choices and amount
+    const parseAbilityIncrease = (s: string) => {
+      const parts = s.split(' ');
+      const last = parts[parts.length - 1];
+      const m = last.match(/\+([0-9]+)/);
+      const amount = m ? parseInt(m[1], 10) : 1;
+      const abilitiesPart = parts.slice(0, parts.length - 1).join(' ');
+      const raw = abilitiesPart.split('/').map(r => r.trim());
+      const map: Record<string, string> = { Str: 'str', Dex: 'dex', Con: 'con', Int: 'int', Wis: 'wis', Cha: 'cha', Any: 'any' };
+      const choices = raw.flatMap(r => r === 'Any' ? ['str','dex','con','int','wis','cha'] : (r.split('/').map(x => map[x] || x))).filter(Boolean) as string[];
+      return { choices, amount };
+    };
+
+    const { choices, amount } = parseAbilityIncrease(feat.abilityScoreIncrease);
+
+    if (choices.length === 1) {
+      const chosen = choices[0] as AbilityScore;
+      const newFeatBonuses = { ...(character.featAbilityBonuses || { str:0,dex:0,con:0,int:0,wis:0,cha:0 }) };
+      newFeatBonuses[chosen] = (newFeatBonuses[chosen] || 0) + amount;
+      const newSelections = { ...(character.featSelections || {}) };
+      newSelections[featName] = chosen;
+      updateCharacter({ feats: [...selectedFeats, featName], featAbilityBonuses: newFeatBonuses, featSelections: newSelections });
+      return;
+    }
+
+    // Multiple choices - open dialog to choose
+    setPendingFeat(featName);
+    setChoiceValue(choices[0]);
+    setShowChoiceDialog(true);
+  };
+
+  const confirmChoice = () => {
+    if (!pendingFeat) return;
+    const feat = feats[pendingFeat];
+    if (!feat || !feat.abilityScoreIncrease) return;
+    const m = feat.abilityScoreIncrease.match(/\+([0-9]+)/);
+    const amount = m ? parseInt(m[1], 10) : 1;
+    const chosen = choiceValue as AbilityScore;
+    const newFeatBonuses = { ...(character.featAbilityBonuses || { str:0,dex:0,con:0,int:0,wis:0,cha:0 }) };
+    newFeatBonuses[chosen] = (newFeatBonuses[chosen] || 0) + amount;
+    const newSelections = { ...(character.featSelections || {}) };
+    newSelections[pendingFeat] = chosen;
+    updateCharacter({ feats: [...selectedFeats, pendingFeat], featAbilityBonuses: newFeatBonuses, featSelections: newSelections });
+    setPendingFeat(null);
+    setShowChoiceDialog(false);
   };
 
   const toggleSection = (section: string) => {
@@ -59,6 +132,30 @@ export function StepFeatsSpells({ character, updateCharacter }: StepFeatsSpellsP
 
   return (
     <div className="space-y-6">
+      <Dialog open={showChoiceDialog} onOpenChange={setShowChoiceDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Escolha o Atributo</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p>Selecione o atributo que receberá o bônus deste talento.</p>
+            <div className="grid grid-cols-3 gap-2">
+              {['str','dex','con','int','wis','cha'].map(a => (
+                <button
+                  key={a}
+                  onClick={() => setChoiceValue(a)}
+                  className={`p-2 rounded border ${choiceValue===a ? 'bg-primary/20 border-primary' : 'bg-background/30'}`}>
+                  {a.toUpperCase()}
+                </button>
+              ))}
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => { setPendingFeat(null); setShowChoiceDialog(false); }}>Cancelar</Button>
+              <Button onClick={confirmChoice}>Confirmar</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
       {/* Summary */}
       <div className="p-4 rounded-lg bg-primary/10 border border-primary/30">
         <h4 className="font-cinzel text-primary mb-2">Feats Selecionados</h4>
@@ -219,6 +316,23 @@ export function StepFeatsSpells({ character, updateCharacter }: StepFeatsSpellsP
             </ScrollArea>
           </CollapsibleContent>
         </Collapsible>
+      )}
+
+      {/* Spells Section Placeholder */}
+      {character.classes?.some(c => {
+        const classData = characterClasses[c.className.toLowerCase()];
+        return classData?.spellcasting;
+      }) && (
+        <div className="p-4 rounded-lg bg-arcane/10 border border-arcane/30">
+          <h4 className="font-cinzel text-arcane mb-2 flex items-center gap-2">
+            <Sparkles className="w-5 h-5" />
+            Sistema de Magias
+          </h4>
+          <p className="text-sm text-muted-foreground">
+            O sistema completo de seleção de magias será implementado em breve!
+            Suas classes conjuradoras terão acesso a cantrips e spells baseados no nível.
+          </p>
+        </div>
       )}
     </div>
   );
