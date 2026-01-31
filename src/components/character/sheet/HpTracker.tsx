@@ -154,7 +154,7 @@ export function HpTracker({
         </div>
 
         {/* HP Controls */}
-        {!readOnly && currentHp > 0 && (
+        {currentHp > 0 && (
           <div className="grid grid-cols-3 gap-2">
             <div className="flex gap-1">
               <Input
