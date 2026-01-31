@@ -215,7 +215,7 @@ export default function Dashboard() {
                         <Button 
                           variant="outline" 
                           size="sm"
-                          onClick={() => navigate(`/edit/${char.id}`)}
+                          onClick={(e) => { e.stopPropagation(); navigate(`/edit/${char.id}`); }}
                           className="gap-1"
                         >
                           <Edit className="w-3 h-3" />
@@ -224,7 +224,7 @@ export default function Dashboard() {
                         <Button 
                           variant="outline" 
                           size="sm"
-                          onClick={() => togglePublic.mutate({ id: char.id, isPublic: !char.isPublic })}
+                          onClick={(e) => { e.stopPropagation(); togglePublic.mutate({ id: char.id, isPublic: !char.isPublic }); }}
                         >
                           {char.isPublic ? (
                             <>
@@ -242,13 +242,15 @@ export default function Dashboard() {
                           <Button 
                             variant="outline" 
                             size="sm"
-                            onClick={() => handleShare(char.id)}
+                            onClick={(e) => { e.stopPropagation(); handleShare(char.id); }}
                           >
                             <Copy className="w-3 h-3 mr-1" />
                             Link
                           </Button>
                         )}
-                        <ExportDropdown character={char as Character} variant="icon" />
+                        <div onClick={(e) => e.stopPropagation()}>
+                          <ExportDropdown character={char as Character} variant="icon" />
+                        </div>
                         <Button 
                           variant="destructive" 
                           size="sm"

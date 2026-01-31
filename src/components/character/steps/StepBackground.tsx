@@ -54,9 +54,15 @@ export function StepBackground({ character, updateCharacter }: StepBackgroundPro
       // Reset bonuses when changing background
       const emptyBonuses = { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 };
       setBonusDistribution(emptyBonuses);
+      // Merge background skill proficiencies into character.skills (avoid duplicates)
+      const existingSkills = character.skills || [];
+      const bgSkills = bg.skillProficiencies || [];
+      const merged = Array.from(new Set([...existingSkills, ...bgSkills]));
+
       updateCharacter({ 
         backgroundName: name,
-        backgroundAbilityBonuses: emptyBonuses
+        backgroundAbilityBonuses: emptyBonuses,
+        skills: merged,
       });
     }
   };

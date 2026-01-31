@@ -175,6 +175,37 @@ export function StepClass({ character, updateCharacter }: StepClassProps) {
                     )}
                   </div>
 
+                  {/* Class Skill Selection */}
+                  {classData.skillChoices && classData.skillChoices.length > 0 && (
+                    <div className="pt-3">
+                      <h5 className="text-sm font-semibold text-primary mb-2">Escolher Perícias ({classData.numSkills})</h5>
+                      <div className="flex flex-wrap gap-2">
+                        {(classData.skillChoices || []).map((skill) => {
+                          const selected = (character.skills || []).includes(skill);
+                          const canSelectMore = (character.skills || []).filter(s => (classData.skillChoices || []).includes(s)).length < classData.numSkills || selected;
+                          return (
+                            <Button
+                              key={skill}
+                              variant={selected ? 'default' : 'outline'}
+                              size="sm"
+                              onClick={() => {
+                                const current = character.skills || [];
+                                if (selected) {
+                                  updateCharacter({ skills: current.filter(s => s !== skill) });
+                                } else if (canSelectMore) {
+                                  updateCharacter({ skills: Array.from(new Set([...current, skill])) });
+                                }
+                              }}
+                              className="gap-2"
+                            >
+                              {skill}
+                            </Button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Features */}
                   <Accordion type="single" collapsible>
                     <AccordionItem value="features" className="border-none">

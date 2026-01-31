@@ -80,6 +80,28 @@ export function CharacterSheet({ character, onEdit, onUpdateCharacter, readOnly 
   const raceData = races.find(r => r.name === character.raceName);
   const bgData = backgrounds.find(b => b.name === character.backgroundName);
 
+  // Skills mapping to abilities
+  const skillsList: { name: string; ability: AbilityScore }[] = [
+    { name: 'Acrobatics', ability: 'dex' },
+    { name: 'Animal Handling', ability: 'wis' },
+    { name: 'Arcana', ability: 'int' },
+    { name: 'Athletics', ability: 'str' },
+    { name: 'Deception', ability: 'cha' },
+    { name: 'History', ability: 'int' },
+    { name: 'Insight', ability: 'wis' },
+    { name: 'Intimidation', ability: 'cha' },
+    { name: 'Investigation', ability: 'int' },
+    { name: 'Medicine', ability: 'wis' },
+    { name: 'Nature', ability: 'int' },
+    { name: 'Perception', ability: 'wis' },
+    { name: 'Performance', ability: 'cha' },
+    { name: 'Persuasion', ability: 'cha' },
+    { name: 'Religion', ability: 'int' },
+    { name: 'Sleight of Hand', ability: 'dex' },
+    { name: 'Stealth', ability: 'dex' },
+    { name: 'Survival', ability: 'wis' },
+  ];
+
   const handleLevelUp = () => {
     if (character.level >= 20) return;
     onUpdateCharacter({
@@ -362,6 +384,42 @@ export function CharacterSheet({ character, onEdit, onUpdateCharacter, readOnly 
                       )}
                       <p className={`text-lg font-semibold ${mod >= 0 ? 'text-nature' : 'text-destructive'}`}>{formatModifier(mod)}</p>
                       <p className="text-xs text-muted-foreground mt-1">Save: {formatModifier(mod + (saveProficient ? proficiencyBonus : 0))}{saveProficient && ' ●'}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Skills */}
+          <Card className="parchment">
+            <CardHeader><CardTitle className="font-cinzel text-primary flex items-center gap-2"><Shield className="w-5 h-5" />Perícias</CardTitle></CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                {skillsList.map((s) => {
+                  const abilityTotal = getTotalAbilityScore(character.baseAbilities[s.ability], character.backgroundAbilityBonuses[s.ability], character.featAbilityBonuses[s.ability]);
+                  const mod = calculateModifier(abilityTotal);
+                  const proficient = (character.skills || []).includes(s.name);
+                  const total = mod + (proficient ? proficiencyBonus : 0);
+                  return (
+                    <div key={s.name} className="flex items-center justify-between p-2 rounded bg-background/30 border border-border">
+                      <div>
+                        <p className="font-medium">{s.name}{proficient && ' ●'}</p>
+                        <p className="text-xs text-muted-foreground">{abilityShortLabels[s.ability]}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className={`text-lg font-semibold ${total >= 0 ? 'text-nature' : 'text-destructive'}`}>{formatModifier(total)}</p>
+                        {!effectiveReadOnly ? (
+                          <Button size="sm" variant={proficient ? 'default' : 'outline'} onClick={() => {
+                            const current = character.skills || [];
+                            if (proficient) {
+                              onUpdateCharacter({ skills: current.filter(sk => sk !== s.name) });
+                            } else {
+                              onUpdateCharacter({ skills: Array.from(new Set([...current, s.name])) });
+                            }
+                          }}>Toggle</Button>
+                        ) : null}
+                      </div>
                     </div>
                   );
                 })}

@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -36,7 +36,8 @@ const steps = [
 export function CharacterCreator() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { saveCharacter } = useCharacters();
+  const { saveCharacter, characters } = useCharacters();
+  const { id } = useParams<{ id?: string }>();
   const [currentStep, setCurrentStep] = useState(1);
   const [character, setCharacter] = useState<Partial<Character>>(createEmptyCharacter());
   const [showSheet, setShowSheet] = useState(false);
@@ -46,6 +47,13 @@ export function CharacterCreator() {
   const updateCharacter = (updates: Partial<Character>) => {
     setCharacter((prev) => ({ ...prev, ...updates }));
   };
+
+  useEffect(() => {
+    if (id && characters && characters.length > 0) {
+      const found = characters.find(c => c.id === id);
+      if (found) setCharacter(found);
+    }
+  }, [id, characters]);
 
   // Check if class is spellcaster
   const primaryClass = character.classes?.[0];

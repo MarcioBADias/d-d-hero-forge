@@ -21,6 +21,7 @@ interface DbCharacter {
   base_abilities: Json | null;
   feats: string[] | null;
   feat_ability_bonuses: Json | null;
+  skill_proficiencies: string[] | null;
   spells_known: string[] | null;
   is_public: boolean | null;
   share_mode: string | null;
@@ -101,6 +102,7 @@ function dbToCharacter(db: DbCharacter): Character {
     baseAbilities: parseAbilityScores(db.base_abilities),
     feats: db.feats || [],
     featAbilityBonuses: parseAbilityBonuses(db.feat_ability_bonuses),
+    skills: db.skill_proficiencies || [],
     spellsKnown: db.spells_known || undefined,
     createdAt: new Date(db.created_at),
     updatedAt: new Date(db.updated_at),
@@ -125,6 +127,7 @@ function characterToDb(char: Partial<Character>, userId?: string) {
     base_abilities: (char.baseAbilities || { str: 8, dex: 8, con: 8, int: 8, wis: 8, cha: 8 }) as unknown as Json,
     feats: char.feats || [],
     feat_ability_bonuses: (char.featAbilityBonuses || { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 }) as unknown as Json,
+    skill_proficiencies: (char.skills || []) as unknown as Json,
     spells_known: char.spellsKnown || null,
     is_public: char.isPublic || false,
   };
@@ -154,29 +157,59 @@ export function useCharacters() {
   const saveCharacter = useMutation({
     mutationFn: async (character: Partial<Character>) => {
       if (!user) throw new Error('Você precisa estar logado para salvar');
-      
       const dbData = characterToDb(character, user.id);
-      
-      if (character.id) {
-        const { data, error } = await supabase
-          .from('characters')
-          .update(dbData)
-          .eq('id', character.id)
-          .eq('user_id', user.id)
-          .select()
-          .single();
-        
-        if (error) throw error;
-        return dbToCharacter(data as unknown as DbCharacter);
-      } else {
-        const { data, error } = await supabase
-          .from('characters')
-          .insert(dbData)
-          .select()
-          .single();
-        
-        if (error) throw error;
-        return dbToCharacter(data as unknown as DbCharacter);
+
+      try {
+        if (character.id) {
+          const { data, error } = await supabase
+            .from('characters')
+            .update(dbData)
+            .eq('id', character.id)
+            .eq('user_id', user.id)
+            .select()
+            .single();
+
+          if (error) throw error;
+          return dbToCharacter(data as unknown as DbCharacter);
+        } else {
+          const { data, error } = await supabase
+            .from('characters')
+            .insert(dbData)
+            .select()
+            .single();
+
+          if (error) throw error;
+          return dbToCharacter(data as unknown as DbCharacter);
+        }
+      } catch (err: any) {
+        // Workaround for PostgREST schema cache when new column isn't present on remote DB
+        const message = err?.message || err?.error_description || '';
+        if (message.includes('skill_proficiencies') || err?.code === 'PGRST204') {
+          const dbDataNoSkills = { ...dbData } as Record<string, unknown>;
+          delete dbDataNoSkills.skill_proficiencies;
+
+          if (character.id) {
+            const { data, error } = await supabase
+              .from('characters')
+              .update(dbDataNoSkills)
+              .eq('id', character.id)
+              .eq('user_id', user.id)
+              .select()
+              .single();
+            if (error) throw error;
+            return dbToCharacter(data as unknown as DbCharacter);
+          } else {
+            const { data, error } = await supabase
+              .from('characters')
+              .insert(dbDataNoSkills)
+              .select()
+              .single();
+            if (error) throw error;
+            return dbToCharacter(data as unknown as DbCharacter);
+          }
+        }
+
+        throw err;
       }
     },
     onSuccess: () => {

@@ -59,6 +59,7 @@ export function ExportDropdown({ character, variant = 'default' }: ExportDropdow
           variant="outline" 
           size={variant === 'icon' ? 'icon' : 'default'}
           className="group relative overflow-hidden"
+          onClick={(e) => e.stopPropagation()}
         >
           <motion.div
             className="absolute inset-0 bg-gradient-to-r from-primary/20 to-arcane/20 opacity-0 group-hover:opacity-100 transition-opacity"

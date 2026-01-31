@@ -47,6 +47,7 @@ CREATE TABLE public.characters (
     base_abilities JSONB DEFAULT '{"str":8,"dex":8,"con":8,"int":8,"wis":8,"cha":8}'::jsonb,
     feats TEXT[] DEFAULT '{}',
     feat_ability_bonuses JSONB DEFAULT '{"str":0,"dex":0,"con":0,"int":0,"wis":0,"cha":0}'::jsonb,
+    skill_proficiencies TEXT[] DEFAULT '{}',
     spells_known TEXT[],
     is_public BOOLEAN DEFAULT false,
     share_mode TEXT DEFAULT 'readonly',
