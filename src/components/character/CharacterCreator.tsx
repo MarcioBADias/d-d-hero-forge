@@ -10,12 +10,14 @@ import { StepRace } from './steps/StepRace';
 import { StepClass } from './steps/StepClass';
 import { StepAttributes } from './steps/StepAttributes';
 import { StepFeatsSpells } from './steps/StepFeatsSpells';
+import { StepEquipment } from './steps/StepEquipment';
+import { StepWeapons } from './steps/StepWeapons';
 import { StepSpells } from './steps/StepSpells';
 import { CharacterSheet } from './sheet/CharacterSheet';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCharacters } from '@/hooks/useCharacters';
 import { AuthModal } from '@/components/auth/AuthModal';
-import { ChevronLeft, ChevronRight, Scroll, Sword, Shield, Sparkles, Dices, BookOpen, Save, Home, Loader2, Wand2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Scroll, Sword, Shield, Sparkles, Dices, BookOpen, Save, Home, Loader2, Wand2, Package } from 'lucide-react';
 import { toast } from 'sonner';
 import { characterClasses } from '@/data/classes';
 
@@ -26,7 +28,9 @@ const steps = [
   { id: 4, name: 'Classe', icon: Sword },
   { id: 5, name: 'Atributos', icon: Dices },
   { id: 6, name: 'Feats', icon: Shield },
-  { id: 7, name: 'Magias', icon: Wand2 },
+  { id: 7, name: 'Equipamentos', icon: Package },
+  { id: 8, name: 'Armas', icon: Sword },
+  { id: 9, name: 'Magias', icon: Wand2 },
 ];
 
 export function CharacterCreator() {
@@ -49,12 +53,12 @@ export function CharacterCreator() {
   const isSpellcaster = !!classData?.spellcasting;
 
   // Determine total steps (skip spell step for non-casters)
-  const totalSteps = isSpellcaster ? 7 : 6;
+  const totalSteps = isSpellcaster ? 9 : 8;
 
   const nextStep = () => {
     if (currentStep < totalSteps) {
       // Skip spells step for non-casters
-      if (currentStep === 6 && !isSpellcaster) {
+      if (currentStep === 8 && !isSpellcaster) {
         setShowSheet(true);
       } else {
         setCurrentStep(currentStep + 1);
@@ -135,6 +139,10 @@ export function CharacterCreator() {
       case 6:
         return <StepFeatsSpells character={character} updateCharacter={updateCharacter} />;
       case 7:
+        return <StepEquipment character={character} updateCharacter={updateCharacter} />;
+      case 8:
+        return <StepWeapons character={character} onUpdateCharacter={updateCharacter} />;
+      case 9:
         return <StepSpells character={character} updateCharacter={updateCharacter} />;
       default:
         return null;
@@ -142,7 +150,7 @@ export function CharacterCreator() {
   };
 
   // Filter steps based on whether class is spellcaster
-  const visibleSteps = isSpellcaster ? steps : steps.filter(s => s.id !== 7);
+  const visibleSteps = isSpellcaster ? steps : steps.filter(s => s.id !== 9);
 
   return (
     <div className="min-h-screen bg-background">

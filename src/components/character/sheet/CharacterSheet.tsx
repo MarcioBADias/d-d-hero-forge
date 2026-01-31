@@ -10,13 +10,15 @@ import { characterClasses } from '@/data/classes';
 import { races } from '@/data/races';
 import { backgrounds } from '@/data/backgrounds';
 import { feats } from '@/data/feats';
+import { allWeapons, calculateAttackBonus, calculateDamage } from '@/data/weapons';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ExportDropdown } from '@/components/character/ExportDropdown';
+import { EquipmentModal } from './EquipmentModal';
 import { HpTracker } from './HpTracker';
 import { InventoryCoins } from './InventoryCoins';
 import { SpellManager } from './SpellManager';
-import { ArrowUp, Edit, Shield, Footprints, Star, Sword, Sparkles, User, Wrench } from 'lucide-react';
+import { ArrowUp, Edit, Shield, Footprints, Star, Sword, Sparkles, User, Wrench, Package } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface CharacterSheetProps {
@@ -31,6 +33,7 @@ const abilityKeys: AbilityScore[] = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
 export function CharacterSheet({ character, onEdit, onUpdateCharacter, readOnly = false }: CharacterSheetProps) {
   const [showLevelUp, setShowLevelUp] = useState(false);
   const [isEditable, setIsEditable] = useState(false);
+  const [customAC, setCustomAC] = useState<string>('');
 
   const effectiveReadOnly = !isEditable;
 
@@ -66,6 +69,13 @@ export function CharacterSheet({ character, onEdit, onUpdateCharacter, readOnly 
   
   const dexMod = calculateModifier(getTotalAbilityScore(character.baseAbilities.dex, character.backgroundAbilityBonuses.dex, character.featAbilityBonuses.dex));
   const baseAC = 10 + dexMod;
+  
+  // Calculate AC from armor and shield if equipped
+  const calculatedAC = (character.armorAC || baseAC) + (character.shieldAC || 0);
+  
+  // Use custom AC if in edit mode and set, otherwise use calculated AC
+  const displayAC = customAC ? parseInt(customAC) : calculatedAC;
+  
   const raceData = races.find(r => r.name === character.raceName);
   const bgData = backgrounds.find(b => b.name === character.backgroundName);
 
@@ -172,8 +182,26 @@ export function CharacterSheet({ character, onEdit, onUpdateCharacter, readOnly 
                   <div className="grid grid-cols-3 gap-4 text-center">
                     <div className="p-2 rounded bg-primary/20 border border-primary/30">
                       <Shield className="w-5 h-5 mx-auto text-primary mb-1" />
-                      <p className="text-2xl font-bold">{baseAC}</p>
+                      {!effectiveReadOnly ? (
+                        <Input
+                          type="number"
+                          value={customAC}
+                          onChange={(e) => setCustomAC(e.target.value)}
+                          onBlur={() => {
+                            if (customAC) {
+                              onUpdateCharacter({ armorAC: parseInt(customAC) });
+                            }
+                            setCustomAC('');
+                          }}
+                          placeholder={calculatedAC.toString()}
+                          className="text-center text-2xl font-bold p-0 bg-transparent border-0 text-primary h-auto"
+                        />
+                      ) : (
+                        <p className="text-2xl font-bold">{displayAC}</p>
+                      )}
                       <p className="text-xs text-muted-foreground">CA</p>
+                      {character.equippedArmor && <p className="text-xs text-muted-foreground">{character.equippedArmor}</p>}
+                      {character.equippedShield && <p className="text-xs text-muted-foreground">+{character.shieldAC}</p>}
                     </div>
                     <div className="p-2 rounded bg-nature/20 border border-nature/30">
                       <Footprints className="w-5 h-5 mx-auto text-nature mb-1" />
@@ -201,6 +229,129 @@ export function CharacterSheet({ character, onEdit, onUpdateCharacter, readOnly 
             onDeathSavesChange={(saves) => onUpdateCharacter({ deathSaves: saves })}
             readOnly={effectiveReadOnly}
           />
+
+          {/* Weapon & Combat */}
+          {character.equippedWeapon && (
+            <Card className="parchment bg-gradient-to-r from-destructive/5 to-orange-500/5">
+              <CardHeader><CardTitle className="font-cinzel text-primary flex items-center gap-2"><Sword className="w-5 h-5" />Arma em Mão</CardTitle></CardHeader>
+              <CardContent>
+                {(() => {
+                  const weapon = allWeapons.find(w => w.name === character.equippedWeapon);
+                  if (!weapon) return null;
+
+                  const strMod = calculateModifier(getTotalAbilityScore(character.baseAbilities.str, character.backgroundAbilityBonuses.str, character.featAbilityBonuses.str));
+                  const dexMod = calculateModifier(getTotalAbilityScore(character.baseAbilities.dex, character.backgroundAbilityBonuses.dex, character.featAbilityBonuses.dex));
+                  
+                  // Determine if character has proficiency (for now, assume martial proficiency at level 1)
+                  const hasMartialProficiency = character.classes?.[0]?.className?.toLowerCase() !== 'wizard' && character.classes?.[0]?.className?.toLowerCase() !== 'sorcerer';
+                  const hasWeaponProficiency = weapon.category === 'Simple' || (hasMartialProficiency && weapon.category === 'Martial');
+                  
+                  const attackBonus = calculateAttackBonus(weapon, strMod, dexMod, proficiencyBonus, hasWeaponProficiency);
+                  const damageRoll = calculateDamage(weapon, strMod, dexMod);
+
+                  return (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="p-4 rounded-lg bg-background/50 border border-border">
+                        <p className="text-xs text-muted-foreground uppercase font-semibold mb-2">Arma</p>
+                        <p className="text-lg font-semibold">{weapon.name}</p>
+                        <Badge variant="outline" className="mt-2">{weapon.type}</Badge>
+                      </div>
+                      
+                      <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/30">
+                        <p className="text-xs text-muted-foreground uppercase font-semibold mb-2">Bônus de Ataque</p>
+                        <p className="text-2xl font-bold text-destructive">{formatModifier(attackBonus)}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {weapon.abilityModifier === 'finesse' 
+                            ? `${formatModifier(Math.max(strMod, dexMod))} (habilidade)` 
+                            : weapon.abilityModifier === 'str'
+                            ? `${formatModifier(strMod)} (FOR)`
+                            : `${formatModifier(dexMod)} (DEX)`}
+                          {hasWeaponProficiency && ` + ${formatModifier(proficiencyBonus)} (proficiência)`}
+                        </p>
+                      </div>
+                      
+                      <div className="p-4 rounded-lg bg-orange-500/10 border border-orange-500/30">
+                        <p className="text-xs text-muted-foreground uppercase font-semibold mb-2">Dano</p>
+                        <p className="text-xl font-bold text-orange-600 dark:text-orange-400">{damageRoll}</p>
+                        <p className="text-xs text-muted-foreground mt-1">{weapon.damageType}</p>
+                      </div>
+                      
+                      {weapon.properties.length > 0 && (
+                        <div className="md:col-span-3">
+                          <p className="text-xs text-muted-foreground uppercase font-semibold mb-2">Propriedades</p>
+                          <div className="flex flex-wrap gap-2">
+                            {weapon.properties.map((prop) => (
+                              <Badge key={prop} variant="secondary" className="text-xs">
+                                {prop}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="md:col-span-3">
+                        <p className="text-xs text-muted-foreground uppercase font-semibold mb-2">Mestria</p>
+                        <p className="text-sm text-muted-foreground">{weapon.mastery}</p>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Equipment Section */}
+          <Card className="parchment">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="font-cinzel text-primary flex items-center gap-2">
+                  <Package className="w-5 h-5" />Equipamento
+                </CardTitle>
+                {!effectiveReadOnly && (
+                  <EquipmentModal
+                    selectedEquipment={character.selectedEquipment || []}
+                    onAddEquipment={(equipmentName) => {
+                      const current = character.selectedEquipment || [];
+                      if (!current.includes(equipmentName)) {
+                        onUpdateCharacter({ selectedEquipment: [...current, equipmentName] });
+                      }
+                    }}
+                    onRemoveEquipment={(equipmentName) => {
+                      const current = character.selectedEquipment || [];
+                      onUpdateCharacter({ selectedEquipment: current.filter(e => e !== equipmentName) });
+                    }}
+                  />
+                )}
+              </div>
+            </CardHeader>
+            <CardContent>
+              {(character.selectedEquipment && character.selectedEquipment.length > 0) ? (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {character.selectedEquipment.map((itemName) => (
+                      <div key={itemName} className="p-3 rounded-lg bg-background/30 border border-border flex items-center justify-between">
+                        <span className="font-medium text-sm">{itemName}</span>
+                        {!effectiveReadOnly && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              const current = character.selectedEquipment || [];
+                              onUpdateCharacter({ selectedEquipment: current.filter(e => e !== itemName) });
+                            }}
+                          >
+                            ✕
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground italic">Nenhum equipamento selecionado</p>
+              )}
+            </CardContent>
+          </Card>
 
           {/* Ability Scores */}
           <Card className="parchment">

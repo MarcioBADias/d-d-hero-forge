@@ -74,6 +74,16 @@ export interface Character {
   preparedSpells?: string[];
   spellSlots?: SpellSlotState;
   
+  // Equipment
+  selectedEquipment?: string[];
+  armorAC?: number; // AC bonus from armor (e.g., 14 from Breastplate)
+  shieldAC?: number; // AC bonus from shield (e.g., 2 from Shield)
+  equippedArmor?: string; // Name of equipped armor
+  equippedShield?: string; // Name of equipped shield
+  
+  // Weapons
+  equippedWeapon?: string; // Name of equipped weapon
+  
   // Combat tracking
   currentHp?: number;
   tempHp?: number;
@@ -163,6 +173,8 @@ export function createEmptyCharacter(): Partial<Character> {
     featSelections: {},
     spellsKnown: [],
     preparedSpells: [],
+    selectedEquipment: [],
+    equippedWeapon: undefined,
     currentHp: undefined,
     tempHp: 0,
     deathSaves: { successes: 0, failures: 0 },
