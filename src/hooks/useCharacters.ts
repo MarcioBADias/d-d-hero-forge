@@ -191,7 +191,7 @@ export function useCharacters() {
           if (character.id) {
             const { data, error } = await supabase
               .from('characters')
-              .update(dbDataNoSkills)
+              .update(dbDataNoSkills as any)
               .eq('id', character.id)
               .eq('user_id', user.id)
               .select()
@@ -201,7 +201,7 @@ export function useCharacters() {
           } else {
             const { data, error } = await supabase
               .from('characters')
-              .insert(dbDataNoSkills)
+              .insert(dbDataNoSkills as any)
               .select()
               .single();
             if (error) throw error;

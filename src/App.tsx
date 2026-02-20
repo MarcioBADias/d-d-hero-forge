@@ -9,6 +9,7 @@ import Dashboard from "./pages/Dashboard";
 import CreateCharacter from "./pages/CreateCharacter";
 import CharacterView from "./pages/CharacterView";
 import Compendium from "./pages/Compendium";
+import AdventureView from "./pages/AdventureView";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -27,6 +28,7 @@ const App = () => (
             <Route path="/edit/:id" element={<CreateCharacter />} />
             <Route path="/character/:id" element={<CharacterView />} />
             <Route path="/compendium" element={<Compendium />} />
+            <Route path="/adventure/:id" element={<AdventureView />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
