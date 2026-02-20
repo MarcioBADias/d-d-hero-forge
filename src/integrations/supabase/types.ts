@@ -14,6 +14,104 @@ export type Database = {
   }
   public: {
     Tables: {
+      adventure_characters: {
+        Row: {
+          adventure_id: string
+          character_id: string
+          id: string
+          joined_at: string
+        }
+        Insert: {
+          adventure_id: string
+          character_id: string
+          id?: string
+          joined_at?: string
+        }
+        Update: {
+          adventure_id?: string
+          character_id?: string
+          id?: string
+          joined_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "adventure_characters_adventure_id_fkey"
+            columns: ["adventure_id"]
+            isOneToOne: false
+            referencedRelation: "adventures"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "adventure_characters_character_id_fkey"
+            columns: ["character_id"]
+            isOneToOne: false
+            referencedRelation: "characters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      adventure_maps: {
+        Row: {
+          adventure_id: string
+          created_at: string
+          id: string
+          image_url: string
+          name: string
+        }
+        Insert: {
+          adventure_id: string
+          created_at?: string
+          id?: string
+          image_url: string
+          name: string
+        }
+        Update: {
+          adventure_id?: string
+          created_at?: string
+          id?: string
+          image_url?: string
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "adventure_maps_adventure_id_fkey"
+            columns: ["adventure_id"]
+            isOneToOne: false
+            referencedRelation: "adventures"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      adventures: {
+        Row: {
+          created_at: string
+          id: string
+          password_hash: string
+          progress: number
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          password_hash: string
+          progress?: number
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          password_hash?: string
+          progress?: number
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       characters: {
         Row: {
           attribute_method: string | null
@@ -83,6 +181,38 @@ export type Database = {
         }
         Relationships: []
       }
+      dm_notes: {
+        Row: {
+          adventure_id: string
+          content: string | null
+          created_at: string
+          id: string
+          title: string
+        }
+        Insert: {
+          adventure_id: string
+          content?: string | null
+          created_at?: string
+          id?: string
+          title: string
+        }
+        Update: {
+          adventure_id?: string
+          content?: string | null
+          created_at?: string
+          id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dm_notes_adventure_id_fkey"
+            columns: ["adventure_id"]
+            isOneToOne: false
+            referencedRelation: "adventures"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -112,6 +242,111 @@ export type Database = {
           username?: string | null
         }
         Relationships: []
+      }
+      rumors_sidequests: {
+        Row: {
+          adventure_id: string
+          created_at: string
+          description: string | null
+          id: string
+          quest_type: string
+          title: string
+        }
+        Insert: {
+          adventure_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          quest_type?: string
+          title: string
+        }
+        Update: {
+          adventure_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          quest_type?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rumors_sidequests_adventure_id_fkey"
+            columns: ["adventure_id"]
+            isOneToOne: false
+            referencedRelation: "adventures"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scenario_locations: {
+        Row: {
+          adventure_id: string
+          created_at: string
+          description: string | null
+          id: string
+          image_url: string | null
+          name: string
+        }
+        Insert: {
+          adventure_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          name: string
+        }
+        Update: {
+          adventure_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scenario_locations_adventure_id_fkey"
+            columns: ["adventure_id"]
+            isOneToOne: false
+            referencedRelation: "adventures"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      session_summaries: {
+        Row: {
+          adventure_id: string
+          created_at: string
+          description: string | null
+          id: string
+          session_date: string
+          title: string
+        }
+        Insert: {
+          adventure_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          session_date?: string
+          title: string
+        }
+        Update: {
+          adventure_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          session_date?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_summaries_adventure_id_fkey"
+            columns: ["adventure_id"]
+            isOneToOne: false
+            referencedRelation: "adventures"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
