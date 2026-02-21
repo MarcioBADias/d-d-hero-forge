@@ -299,13 +299,12 @@ export function EquipmentSection({
                             id={`equip-armor-${itemName}`}
                             checked={isEquipped}
                             onCheckedChange={(checked) => {
-                              onToggleArmor(itemName, checked);
                               if (itemInfo.type === 'armor') {
                                 if (checked) {
                                   const ac = calculateArmorAC(itemInfo.data as Armor, dexModifier);
                                   onEquipArmor(itemName, ac);
                                 } else {
-                                  onEquipArmor(undefined, 0);
+                                  onEquipArmor(undefined, 10 + dexModifier);
                                 }
                               } else if (itemInfo.type === 'shield') {
                                 if (checked) {
@@ -314,11 +313,12 @@ export function EquipmentSection({
                                   onEquipShield(undefined, 0);
                                 }
                               }
+                              onToggleArmor(itemName, checked);
                             }}
                             disabled={readOnly}
                           />
-                          <Label htmlFor={`equip-armor-${itemName}`} className="text-xs text-muted-foreground">
-                            {isEquipped ? 'Equipado' : 'Guardado'}
+                          <Label htmlFor={`equip-armor-${itemName}`} className="text-xs text-muted-foreground font-medium">
+                            {isEquipped ? '✓ Equipado' : 'Equipar'}
                           </Label>
                         </div>
                       )}

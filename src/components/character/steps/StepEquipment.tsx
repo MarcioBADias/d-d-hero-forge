@@ -74,7 +74,7 @@ export function StepEquipment({ character, updateCharacter }: StepEquipmentProps
     if (isSelected) {
       // Removing item
       if (itemName === equippedArmor) {
-        armorAC = undefined;
+        armorAC = 10 + dexMod; // Reset to base AC when armor is removed
         equippedArmor = undefined;
       }
       if (itemName === equippedShield) {
@@ -82,16 +82,27 @@ export function StepEquipment({ character, updateCharacter }: StepEquipmentProps
         equippedShield = undefined;
       }
     } else {
-      // Adding item
+      // Adding item - only one armor and one shield can be equipped at a time
       if (isArmor) {
         const armorData = armors.find(a => a.name === itemName);
         if (armorData) {
+          // Unequip previous armor if one was equipped
+          if (equippedArmor && equippedArmor !== itemName) {
+            // Remove the previous armor from equipped list but keep it in inventory
+            equippedArmor = undefined;
+            armorAC = undefined;
+          }
           armorAC = calculateArmorAC(armorData, dexMod);
           equippedArmor = itemName;
         }
       } else if (isShield) {
         const shieldData = shields.find(s => s.name === itemName);
         if (shieldData) {
+          // Unequip previous shield if one was equipped
+          if (equippedShield && equippedShield !== itemName) {
+            equippedShield = undefined;
+            shieldAC = undefined;
+          }
           shieldAC = shieldData.acBonus;
           equippedShield = itemName;
         }
@@ -119,7 +130,39 @@ export function StepEquipment({ character, updateCharacter }: StepEquipmentProps
       });
     }
 
-    updateCharacter({ selectedEquipment: Array.from(newEquipment) });
+    // Process armor/shield from selected option
+    let newArmorAC = character.armorAC;
+    let equippedArmor = character.equippedArmor;
+    let newShieldAC = character.shieldAC;
+    let equippedShield = character.equippedShield;
+
+    // Check for armor in the new equipment
+    for (const itemName of newEquipment) {
+      const armor = armors.find(a => a.name === itemName);
+      if (armor) {
+        newArmorAC = calculateArmorAC(armor, dexMod);
+        equippedArmor = itemName;
+        break;
+      }
+    }
+
+    // Check for shield in the new equipment
+    for (const itemName of newEquipment) {
+      const shield = shields.find(s => s.name === itemName);
+      if (shield) {
+        newShieldAC = shield.acBonus;
+        equippedShield = itemName;
+        break;
+      }
+    }
+
+    updateCharacter({ 
+      selectedEquipment: Array.from(newEquipment),
+      armorAC: newArmorAC,
+      equippedArmor,
+      shieldAC: newShieldAC,
+      equippedShield,
+    });
   };
 
   const totalAC = 10 + (character.armorAC ? character.armorAC - 10 : 0) + (character.shieldAC || 0);

@@ -33,7 +33,6 @@ const abilityKeys: AbilityScore[] = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
 export function CharacterSheet({ character, onEdit, onUpdateCharacter, readOnly = false }: CharacterSheetProps) {
   const [showLevelUp, setShowLevelUp] = useState(false);
   const [isEditable, setIsEditable] = useState(false);
-  const [customAC, setCustomAC] = useState<string>('');
 
   const effectiveReadOnly = !isEditable;
 
@@ -71,11 +70,11 @@ export function CharacterSheet({ character, onEdit, onUpdateCharacter, readOnly 
   const dexMod = calculateModifier(getTotalAbilityScore(character.baseAbilities.dex, character.backgroundAbilityBonuses.dex, character.featAbilityBonuses.dex));
   const baseAC = 10 + dexMod;
   
-  // Calculate AC from armor and shield if equipped
-  const calculatedAC = (character.armorAC || baseAC) + (character.shieldAC || 0);
-  
-  // Use custom AC if in edit mode and set, otherwise use calculated AC
-  const displayAC = customAC ? parseInt(customAC) : calculatedAC;
+  // Calculate AC: if armor is equipped, use its AC value, otherwise base AC (10 + dex)
+  // Then add shield bonus if equipped
+  const armorAC = character.armorAC ?? baseAC;
+  const shieldBonus = character.shieldAC ?? 0;
+  const displayAC = armorAC + shieldBonus;
   
   const raceData = races.find(r => r.name === character.raceName);
   const bgData = backgrounds.find(b => b.name === character.backgroundName);
@@ -205,23 +204,7 @@ export function CharacterSheet({ character, onEdit, onUpdateCharacter, readOnly 
                   <div className="grid grid-cols-3 gap-4 text-center">
                     <div className="p-2 rounded bg-primary/20 border border-primary/30">
                       <Shield className="w-5 h-5 mx-auto text-primary mb-1" />
-                      {!effectiveReadOnly ? (
-                        <Input
-                          type="number"
-                          value={customAC}
-                          onChange={(e) => setCustomAC(e.target.value)}
-                          onBlur={() => {
-                            if (customAC) {
-                              onUpdateCharacter({ armorAC: parseInt(customAC) });
-                            }
-                            setCustomAC('');
-                          }}
-                          placeholder={calculatedAC.toString()}
-                          className="text-center text-2xl font-bold p-0 bg-transparent border-0 text-primary h-auto"
-                        />
-                      ) : (
-                        <p className="text-2xl font-bold">{displayAC}</p>
-                      )}
+                      <p className="text-2xl font-bold text-primary">{displayAC}</p>
                       <p className="text-xs text-muted-foreground">CA</p>
                       {character.equippedArmor && <p className="text-xs text-muted-foreground">{character.equippedArmor}</p>}
                       {character.equippedShield && <p className="text-xs text-muted-foreground">+{character.shieldAC}</p>}
@@ -322,12 +305,18 @@ export function CharacterSheet({ character, onEdit, onUpdateCharacter, readOnly 
               const newArmorStates = { ...character.armorEquipStates };
               delete newArmorStates[name];
               
+              // If removing equipped armor, reset armor AC and set it to undefined
+              const isEquippedArmor = character.equippedArmor === name;
+              const isEquippedShield = character.equippedShield === name;
+              
               onUpdateCharacter({
                 selectedEquipment: current.filter(e => e !== name),
                 customEquipment: customItems.filter(c => c.name !== name),
                 armorEquipStates: newArmorStates,
-                equippedArmor: character.equippedArmor === name ? undefined : character.equippedArmor,
-                equippedShield: character.equippedShield === name ? undefined : character.equippedShield,
+                equippedArmor: isEquippedArmor ? undefined : character.equippedArmor,
+                armorAC: isEquippedArmor ? undefined : character.armorAC,
+                equippedShield: isEquippedShield ? undefined : character.equippedShield,
+                shieldAC: isEquippedShield ? undefined : character.shieldAC,
               });
             }}
             onToggleArmor={(name, equipped) => {
