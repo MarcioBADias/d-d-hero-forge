@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAdventureDetails } from '@/hooks/useAdventures';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -19,13 +20,14 @@ import MonsterStatBlock from '@/components/adventure/MonsterStatBlock';
 import { toast } from 'sonner';
 import {
   ArrowLeft, Users, ScrollText, MapPin, Compass, Map, BookLock,
-  Plus, ChevronDown, ChevronUp, Sword, Trash2, Upload, Skull
+  Plus, ChevronDown, ChevronUp, Sword, Trash2, Upload, Skull, Pen
 } from 'lucide-react';
 
 export default function AdventureView() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const { adventure, isOwner, characters, sessions, locations, rumors, maps, dmNotes, bestiary, invalidateAll } = useAdventureDetails(id);
 
   const [expanded, setExpanded] = useState<Record<string, boolean>>({
@@ -43,6 +45,14 @@ export default function AdventureView() {
   const [noteDialog, setNoteDialog] = useState(false);
   const [progressDialog, setProgressDialog] = useState(false);
   const [bestiaryDialog, setBestiaryDialog] = useState(false);
+  const [imageViewerDialog, setImageViewerDialog] = useState(false);
+  const [editingMonsterId, setEditingMonsterId] = useState<string | null>(null);
+  const [editSessionId, setEditSessionId] = useState<string | null>(null);
+  const [editLocationId, setEditLocationId] = useState<string | null>(null);
+  const [editRumorId, setEditRumorId] = useState<string | null>(null);
+  const [editMapId, setEditMapId] = useState<string | null>(null);
+  const [editNoteId, setEditNoteId] = useState<string | null>(null);
+  const [viewImageUrl, setViewImageUrl] = useState<string>('');
 
   // Form states
   const [formTitle, setFormTitle] = useState('');
@@ -50,10 +60,12 @@ export default function AdventureView() {
   const [formDate, setFormDate] = useState(new Date().toISOString().split('T')[0]);
   const [formType, setFormType] = useState('rumor');
   const [mapFile, setMapFile] = useState<File | null>(null);
+  const [monsterImageFile, setMonsterImageFile] = useState<File | null>(null);
   const [progressValue, setProgressValue] = useState(adventure?.progress || 0);
   const [monsterJson, setMonsterJson] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const jsonFileInputRef = useRef<HTMLInputElement>(null);
+  const monsterImageInputRef = useRef<HTMLInputElement>(null);
 
   const toggle = (key: string) => setExpanded(prev => ({ ...prev, [key]: !prev[key] }));
   const toggleNote = (id: string) => setExpandedNotes(prev => ({ ...prev, [id]: !prev[id] }));
@@ -91,6 +103,9 @@ export default function AdventureView() {
 
   const handleAddSession = async () => {
     if (!formTitle.trim()) return;
+    if (editSessionId) {
+      return handleUpdateSession();
+    }
     const { error } = await supabase.from('session_summaries').insert({
       adventure_id: id, title: formTitle, session_date: formDate, description: formDesc || null,
     });
@@ -101,6 +116,9 @@ export default function AdventureView() {
 
   const handleAddLocation = async () => {
     if (!formTitle.trim()) return;
+    if (editLocationId) {
+      return handleUpdateLocation();
+    }
     const { error } = await supabase.from('scenario_locations').insert({
       adventure_id: id, name: formTitle, description: formDesc || null,
     });
@@ -111,6 +129,9 @@ export default function AdventureView() {
 
   const handleAddRumor = async () => {
     if (!formTitle.trim()) return;
+    if (editRumorId) {
+      return handleUpdateRumor();
+    }
     const { error } = await supabase.from('rumors_sidequests').insert({
       adventure_id: id, title: formTitle, description: formDesc || null, quest_type: formType,
     });
@@ -120,21 +141,46 @@ export default function AdventureView() {
   };
 
   const handleAddMap = async () => {
-    if (!mapFile || !formTitle.trim()) return;
-    const filePath = `${id}/${Date.now()}_${mapFile.name}`;
-    const { error: upErr } = await supabase.storage.from('adventure-maps').upload(filePath, mapFile);
-    if (upErr) { toast.error(upErr.message); return; }
-    const { data: urlData } = supabase.storage.from('adventure-maps').getPublicUrl(filePath);
-    const { error } = await supabase.from('adventure_maps').insert({
-      adventure_id: id, name: formTitle, image_url: urlData.publicUrl,
-    });
-    if (error) { toast.error(error.message); return; }
-    toast.success('Mapa adicionado!');
-    setMapDialog(false); setFormTitle(''); setMapFile(null); invalidateAll();
+    if (!formTitle.trim()) return;
+    if (!editMapId && !mapFile) return; // Precisa de arquivo ao criar novo
+    
+    if (editMapId) {
+      // Se editando, atualizar apenas o nome (ou nome + imagem se tiver arquivo)
+      const updateData: any = { name: formTitle };
+      
+      if (mapFile) {
+        const filePath = `${id}/${Date.now()}_${mapFile.name}`;
+        const { error: upErr } = await supabase.storage.from('adventure-maps').upload(filePath, mapFile);
+        if (upErr) { toast.error(upErr.message); return; }
+        const { data: urlData } = supabase.storage.from('adventure-maps').getPublicUrl(filePath);
+        updateData.image_url = urlData.publicUrl;
+      }
+      
+      const { error } = await supabase.from('adventure_maps').update(updateData).eq('id', editMapId);
+      if (error) { toast.error(error.message); return; }
+      toast.success('Mapa atualizado!');
+    } else {
+      // Criar novo (precisa de arquivo)
+      const filePath = `${id}/${Date.now()}_${mapFile!.name}`;
+      const { error: upErr } = await supabase.storage.from('adventure-maps').upload(filePath, mapFile!);
+      if (upErr) { toast.error(upErr.message); return; }
+      const { data: urlData } = supabase.storage.from('adventure-maps').getPublicUrl(filePath);
+      
+      const { error } = await supabase.from('adventure_maps').insert({
+        adventure_id: id, name: formTitle, image_url: urlData.publicUrl,
+      });
+      if (error) { toast.error(error.message); return; }
+      toast.success('Mapa adicionado!');
+    }
+    
+    setMapDialog(false); setFormTitle(''); setMapFile(null); setEditMapId(null); invalidateAll();
   };
 
   const handleAddNote = async () => {
     if (!formTitle.trim()) return;
+    if (editNoteId) {
+      return handleUpdateNote();
+    }
     const { error } = await supabase.from('dm_notes').insert({
       adventure_id: id, title: formTitle, content: formDesc || null,
     });
@@ -148,18 +194,145 @@ export default function AdventureView() {
       const parsed = JSON.parse(monsterJson);
       const monsterData = parsed.monster || parsed;
       if (!monsterData.name) { toast.error('JSON inválido: campo "name" não encontrado'); return; }
-      const { error } = await supabase.from('adventure_bestiary').insert({
+      
+      let imageUrl: string | null = null;
+      if (monsterImageFile) {
+        const filePath = `monsters/${id}/${Date.now()}_${monsterImageFile.name}`;
+        const { error: upErr } = await supabase.storage.from('adventure-maps').upload(filePath, monsterImageFile);
+        if (upErr) { toast.error(upErr.message); return; }
+        const { data: urlData } = supabase.storage.from('adventure-maps').getPublicUrl(filePath);
+        imageUrl = urlData.publicUrl;
+      }
+
+      const insertData: any = {
         adventure_id: id,
         name: monsterData.name,
         challenge_rating: monsterData.challenge_rating || '0',
-        monster_data: monsterData,
-      });
-      if (error) { toast.error(error.message); return; }
-      toast.success(`${monsterData.name} adicionado ao bestiário!`);
-      setBestiaryDialog(false); setMonsterJson(''); invalidateAll();
+        monster_data: imageUrl ? { ...monsterData, image_url: imageUrl } : monsterData,
+      };
+
+      if (editingMonsterId) {
+        const { error } = await supabase.from('adventure_bestiary').update(insertData).eq('id', editingMonsterId);
+        if (error) { toast.error(error.message); return; }
+        toast.success(`${monsterData.name} atualizado!`);
+      } else {
+        const { error } = await supabase.from('adventure_bestiary').insert(insertData);
+        if (error) { toast.error(error.message); return; }
+        toast.success(`${monsterData.name} adicionado ao bestiário!`);
+      }
+      
+      setBestiaryDialog(false);
+      setMonsterJson('');
+      setMonsterImageFile(null);
+      setEditingMonsterId(null);
+      
+      // Refetch imediato para atualizar a UI
+      await queryClient.refetchQueries({ queryKey: ['bestiary', id] });
     } catch {
       toast.error('JSON inválido. Verifique o formato.');
     }
+  };
+
+  const handleEditMonster = (monster: any) => {
+    try {
+      setEditingMonsterId(monster.id);
+      setMonsterJson(JSON.stringify(monster.monster_data, null, 2));
+      setBestiaryDialog(true);
+    } catch {
+      toast.error('Erro ao editar monstro');
+    }
+  };
+
+  const handleEditSession = (sessionId: string, title: string, description: string, date: string) => {
+    setEditSessionId(sessionId);
+    setFormTitle(title);
+    setFormDesc(description);
+    setFormDate(date);
+    setSessionDialog(true);
+  };
+
+  const handleUpdateSession = async () => {
+    if (!editSessionId || !formTitle.trim()) return;
+    const { error } = await supabase.from('session_summaries').update({
+      title: formTitle, session_date: formDate, description: formDesc || null,
+    }).eq('id', editSessionId);
+    if (error) { toast.error(error.message); return; }
+    toast.success('Sessão atualizada!');
+    setSessionDialog(false);
+    setEditSessionId(null);
+    setFormTitle('');
+    setFormDesc('');
+    invalidateAll();
+  };
+
+  const handleEditLocation = (locationId: string, name: string, description: string) => {
+    setEditLocationId(locationId);
+    setFormTitle(name);
+    setFormDesc(description);
+    setLocationDialog(true);
+  };
+
+  const handleUpdateLocation = async () => {
+    if (!editLocationId || !formTitle.trim()) return;
+    const { error } = await supabase.from('scenario_locations').update({
+      name: formTitle, description: formDesc || null,
+    }).eq('id', editLocationId);
+    if (error) { toast.error(error.message); return; }
+    toast.success('Localidade atualizada!');
+    setLocationDialog(false);
+    setEditLocationId(null);
+    setFormTitle('');
+    setFormDesc('');
+    invalidateAll();
+  };
+
+  const handleEditRumor = (rumorId: string, title: string, description: string, type: string) => {
+    setEditRumorId(rumorId);
+    setFormTitle(title);
+    setFormDesc(description);
+    setFormType(type);
+    setRumorDialog(true);
+  };
+
+  const handleUpdateRumor = async () => {
+    if (!editRumorId || !formTitle.trim()) return;
+    const { error } = await supabase.from('rumors_sidequests').update({
+      title: formTitle, description: formDesc || null, quest_type: formType,
+    }).eq('id', editRumorId);
+    if (error) { toast.error(error.message); return; }
+    toast.success('Rumor/Quest atualizado!');
+    setRumorDialog(false);
+    setEditRumorId(null);
+    setFormTitle('');
+    setFormDesc('');
+    invalidateAll();
+  };
+
+  const handleEditMap = (mapId: string, name: string) => {
+    setEditMapId(mapId);
+    setFormTitle(name);
+    setMapDialog(true);
+  };
+
+  const handleEditNote = (noteId: string, title: string, content: string) => {
+    setEditNoteId(noteId);
+    setFormTitle(title);
+    setFormDesc(content);
+    setNoteDialog(true);
+  };
+
+  const handleUpdateNote = async () => {
+    if (!editNoteId || !formTitle.trim()) return;
+    const { error } = await supabase.from('dm_notes').update({
+      title: formTitle, content: formDesc || null,
+    }).eq('id', editNoteId);
+    if (error) { toast.error(error.message); return; }
+    toast.success('Nota atualizada!');
+    setNoteDialog(false);
+    setEditNoteId(null);
+    setFormTitle('');
+    setFormDesc('');
+    invalidateAll();
   };
 
   const handleJsonFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -293,8 +466,11 @@ export default function AdventureView() {
                 <CardContent className="pt-0 space-y-2">
                   {sessions.length === 0 ? (
                     <p className="text-sm text-muted-foreground py-4">Nenhuma sessão registrada.</p>
-                  ) : sessions.map(s => (
-                    <Card key={s.id} className="bg-secondary/30">
+                  ) : sessions.map((s, index) => (
+                    <Card 
+                      key={s.id} 
+                      className="bg-secondary/30"
+                    >
                       <CardContent className="p-3">
                         <div className="flex justify-between items-start">
                           <div>
@@ -303,9 +479,14 @@ export default function AdventureView() {
                             {s.description && <p className="text-sm mt-1">{s.description}</p>}
                           </div>
                           {isOwner && (
-                            <Button size="icon" variant="ghost" onClick={() => handleDelete('session_summaries', s.id)}>
-                              <Trash2 className="w-4 h-4 text-destructive" />
-                            </Button>
+                            <div className="flex gap-1">
+                              <Button size="icon" variant="ghost" onClick={() => handleEditSession(s.id, s.title, s.description || '', s.session_date)}>
+                                <Pen className="w-4 h-4 text-primary" />
+                              </Button>
+                              <Button size="icon" variant="ghost" onClick={() => handleDelete('session_summaries', s.id)}>
+                                <Trash2 className="w-4 h-4 text-destructive" />
+                              </Button>
+                            </div>
                           )}
                         </div>
                       </CardContent>
@@ -326,8 +507,11 @@ export default function AdventureView() {
                 <CardContent className="pt-0 space-y-2">
                   {locations.length === 0 ? (
                     <p className="text-sm text-muted-foreground py-4">Nenhuma localidade cadastrada.</p>
-                  ) : locations.map(l => (
-                    <Card key={l.id} className="bg-secondary/30">
+                  ) : locations.map((l, index) => (
+                    <Card 
+                      key={l.id} 
+                      className="bg-secondary/30"
+                    >
                       <CardContent className="p-3">
                         <div className="flex justify-between items-start">
                           <div>
@@ -335,9 +519,14 @@ export default function AdventureView() {
                             {l.description && <p className="text-sm mt-1">{l.description}</p>}
                           </div>
                           {isOwner && (
-                            <Button size="icon" variant="ghost" onClick={() => handleDelete('scenario_locations', l.id)}>
-                              <Trash2 className="w-4 h-4 text-destructive" />
-                            </Button>
+                            <div className="flex gap-1">
+                              <Button size="icon" variant="ghost" onClick={() => handleEditLocation(l.id, l.name, l.description || '')}>
+                                <Pen className="w-4 h-4 text-primary" />
+                              </Button>
+                              <Button size="icon" variant="ghost" onClick={() => handleDelete('scenario_locations', l.id)}>
+                                <Trash2 className="w-4 h-4 text-destructive" />
+                              </Button>
+                            </div>
                           )}
                         </div>
                       </CardContent>
@@ -358,8 +547,11 @@ export default function AdventureView() {
                 <CardContent className="pt-0 space-y-2">
                   {rumors.length === 0 ? (
                     <p className="text-sm text-muted-foreground py-4">Nenhum rumor cadastrado.</p>
-                  ) : rumors.map(r => (
-                    <Card key={r.id} className="bg-secondary/30">
+                  ) : rumors.map((r, index) => (
+                    <Card 
+                      key={r.id} 
+                      className="bg-secondary/30"
+                    >
                       <CardContent className="p-3">
                         <div className="flex justify-between items-start">
                           <div>
@@ -370,9 +562,14 @@ export default function AdventureView() {
                             {r.description && <p className="text-sm mt-1">{r.description}</p>}
                           </div>
                           {isOwner && (
-                            <Button size="icon" variant="ghost" onClick={() => handleDelete('rumors_sidequests', r.id)}>
-                              <Trash2 className="w-4 h-4 text-destructive" />
-                            </Button>
+                            <div className="flex gap-1">
+                              <Button size="icon" variant="ghost" onClick={() => handleEditRumor(r.id, r.title, r.description || '', r.quest_type)}>
+                                <Pen className="w-4 h-4 text-primary" />
+                              </Button>
+                              <Button size="icon" variant="ghost" onClick={() => handleDelete('rumors_sidequests', r.id)}>
+                                <Trash2 className="w-4 h-4 text-destructive" />
+                              </Button>
+                            </div>
                           )}
                         </div>
                       </CardContent>
@@ -385,40 +582,63 @@ export default function AdventureView() {
         </Card>
 
         {/* Bestiary */}
-        <Card className="parchment">
-          <SectionHeader title="Bestiário da Aventura" icon={Skull} sectionKey="bestiary" onAdd={() => { setMonsterJson(''); setBestiaryDialog(true); }} />
-          <AnimatePresence>
-            {expanded.bestiary && (
-              <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-                <CardContent className="pt-0 space-y-2">
-                  {bestiary.length === 0 ? (
-                    <p className="text-sm text-muted-foreground py-4">Nenhum monstro/NPC cadastrado.</p>
-                  ) : bestiary.map(b => (
-                    <Card key={b.id} className="bg-secondary/30">
-                      <CardContent className="p-0">
-                        <div
-                          className="flex items-center justify-between p-3 cursor-pointer hover:bg-secondary/50 transition-colors"
-                          onClick={() => toggleMonster(b.id)}
-                        >
-                          <div className="flex items-center gap-2">
-                            <Skull className="w-4 h-4 text-primary" />
-                            <span className="font-semibold">{b.name}</span>
-                            <Badge variant="outline" className="border-primary text-primary text-xs">CR {b.challenge_rating}</Badge>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            {isOwner && (
+        {isOwner && (
+          <Card className="parchment">
+            <SectionHeader title="Bestiário da Aventura" icon={Skull} sectionKey="bestiary" onAdd={() => { setMonsterJson(''); setMonsterImageFile(null); setEditingMonsterId(null); setBestiaryDialog(true); }} />
+            <AnimatePresence>
+              {expanded.bestiary && (
+                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                  <CardContent className="pt-0 space-y-2">
+                    {bestiary.length === 0 ? (
+                      <p className="text-sm text-muted-foreground py-4">Nenhum monstro/NPC cadastrado.</p>
+                    ) : bestiary.map((b, index) => (
+                      <Card 
+                        key={b.id} 
+                        className="bg-secondary/30"
+                      >
+                        <CardContent className="p-0">
+                          <div
+                            className="flex items-center justify-between p-3 cursor-pointer hover:bg-secondary/50 transition-colors"
+                            onClick={() => toggleMonster(b.id)}
+                          >
+                            <div className="flex items-center gap-2">
+                              {b.monster_data.image_url ? (
+                                <img
+                                  src={b.monster_data.image_url}
+                                  alt={b.name}
+                                  className="w-8 h-8 rounded-full object-cover border-2 border-primary flex-shrink-0"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setViewImageUrl(b.monster_data.image_url);
+                                    setImageViewerDialog(true);
+                                  }}
+                                />
+                              ) : (
+                                <Skull className="w-4 h-4 text-primary" />
+                              )}
+                              <span className="font-semibold">{b.name}</span>
+                              <Badge variant="outline" className="border-primary text-primary text-xs">CR {b.challenge_rating}</Badge>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); handleEditMonster(b); }}>
+                                <Pen className="w-4 h-4 text-primary" />
+                              </Button>
                               <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); handleDelete('adventure_bestiary', b.id); }}>
                                 <Trash2 className="w-4 h-4 text-destructive" />
                               </Button>
-                            )}
-                            {expandedMonsters[b.id] ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+                              {expandedMonsters[b.id] ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+                            </div>
                           </div>
-                        </div>
-                        <AnimatePresence>
-                          {expandedMonsters[b.id] && (
-                            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-                              <div className="px-3 pb-3">
-                                <MonsterStatBlock data={b.monster_data} />
+                          <AnimatePresence>
+                            {expandedMonsters[b.id] && (
+                              <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                                <div className="px-3 pb-3">
+                                  <MonsterStatBlock data={b.monster_data} onImageClick={() => {
+                                    if (b.monster_data.image_url) {
+                                      setViewImageUrl(b.monster_data.image_url);
+                                      setImageViewerDialog(true);
+                                    }
+                                  }} />
                               </div>
                             </motion.div>
                           )}
@@ -430,7 +650,8 @@ export default function AdventureView() {
               </motion.div>
             )}
           </AnimatePresence>
-        </Card>
+          </Card>
+        )}
 
         {/* Maps */}
         <Card className="parchment">
@@ -441,15 +662,23 @@ export default function AdventureView() {
                 <CardContent className="pt-0 space-y-2">
                   {maps.length === 0 ? (
                     <p className="text-sm text-muted-foreground py-4">Nenhum mapa carregado.</p>
-                  ) : maps.map(m => (
-                    <Card key={m.id} className="bg-secondary/30">
+                  ) : maps.map((m, index) => (
+                    <Card 
+                      key={m.id} 
+                      className="bg-secondary/30"
+                    >
                       <CardContent className="p-3">
                         <div className="flex justify-between items-start mb-2">
                           <p className="font-semibold">{m.name}</p>
                           {isOwner && (
-                            <Button size="icon" variant="ghost" onClick={() => handleDelete('adventure_maps', m.id)}>
-                              <Trash2 className="w-4 h-4 text-destructive" />
-                            </Button>
+                            <div className="flex gap-1">
+                              <Button size="icon" variant="ghost" onClick={() => handleEditMap(m.id, m.name)}>
+                                <Pen className="w-4 h-4 text-primary" />
+                              </Button>
+                              <Button size="icon" variant="ghost" onClick={() => handleDelete('adventure_maps', m.id)}>
+                                <Trash2 className="w-4 h-4 text-destructive" />
+                              </Button>
+                            </div>
                           )}
                         </div>
                         <img src={m.image_url} alt={m.name} className="w-full rounded-lg border border-border max-h-96 object-contain" />
@@ -472,8 +701,11 @@ export default function AdventureView() {
                   <CardContent className="pt-0 space-y-2">
                     {dmNotes.length === 0 ? (
                       <p className="text-sm text-muted-foreground py-4">Nenhuma nota do mestre.</p>
-                    ) : dmNotes.map(n => (
-                      <Card key={n.id} className="bg-secondary/30 border-primary/20">
+                    ) : dmNotes.map((n, index) => (
+                      <Card 
+                        key={n.id} 
+                        className="bg-secondary/30 border-primary/20"
+                      >
                         <CardContent className="p-0">
                           <div
                             className="flex items-center justify-between p-3 cursor-pointer hover:bg-secondary/50 transition-colors"
@@ -484,6 +716,9 @@ export default function AdventureView() {
                               <span className="font-semibold">{n.title}</span>
                             </div>
                             <div className="flex items-center gap-1">
+                              <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); handleEditNote(n.id, n.title, n.content || ''); }}>
+                                <Pen className="w-4 h-4 text-primary" />
+                              </Button>
                               <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); handleDelete('dm_notes', n.id); }}>
                                 <Trash2 className="w-4 h-4 text-destructive" />
                               </Button>
@@ -512,38 +747,61 @@ export default function AdventureView() {
 
       {/* Dialogs */}
       {/* Session dialog */}
-      <Dialog open={sessionDialog} onOpenChange={setSessionDialog}>
+      <Dialog open={sessionDialog} onOpenChange={(open) => {
+        setSessionDialog(open);
+        if (!open) {
+          setEditSessionId(null);
+          setFormTitle('');
+          setFormDesc('');
+          setFormDate(new Date().toISOString().split('T')[0]);
+        }
+      }}>
         <DialogContent className="parchment">
-          <DialogHeader><DialogTitle className="font-cinzel">Nova Sessão</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle className="font-cinzel">{editSessionId ? 'Editar' : 'Nova'} Sessão</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <Input placeholder="Título da sessão" value={formTitle} onChange={e => setFormTitle(e.target.value)} />
             <Input type="date" value={formDate} onChange={e => setFormDate(e.target.value)} />
             <Textarea placeholder="Descrição..." value={formDesc} onChange={e => setFormDesc(e.target.value)} rows={4} />
           </div>
           <DialogFooter>
-            <Button onClick={handleAddSession} className="btn-d20">Adicionar</Button>
+            <Button onClick={handleAddSession} className="btn-d20">{editSessionId ? 'Atualizar' : 'Adicionar'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Location dialog */}
-      <Dialog open={locationDialog} onOpenChange={setLocationDialog}>
+      <Dialog open={locationDialog} onOpenChange={(open) => {
+        setLocationDialog(open);
+        if (!open) {
+          setEditLocationId(null);
+          setFormTitle('');
+          setFormDesc('');
+        }
+      }}>
         <DialogContent className="parchment">
-          <DialogHeader><DialogTitle className="font-cinzel">Nova Localidade</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle className="font-cinzel">{editLocationId ? 'Editar' : 'Nova'} Localidade</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <Input placeholder="Nome da localidade" value={formTitle} onChange={e => setFormTitle(e.target.value)} />
             <Textarea placeholder="Descrição..." value={formDesc} onChange={e => setFormDesc(e.target.value)} rows={4} />
           </div>
           <DialogFooter>
-            <Button onClick={handleAddLocation} className="btn-d20">Adicionar</Button>
+            <Button onClick={handleAddLocation} className="btn-d20">{editLocationId ? 'Atualizar' : 'Adicionar'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Rumor dialog */}
-      <Dialog open={rumorDialog} onOpenChange={setRumorDialog}>
+      <Dialog open={rumorDialog} onOpenChange={(open) => {
+        setRumorDialog(open);
+        if (!open) {
+          setEditRumorId(null);
+          setFormTitle('');
+          setFormDesc('');
+          setFormType('rumor');
+        }
+      }}>
         <DialogContent className="parchment">
-          <DialogHeader><DialogTitle className="font-cinzel">Novo Rumor / Sidequest</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle className="font-cinzel">{editRumorId ? 'Editar' : 'Novo'} Rumor / Sidequest</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <Input placeholder="Título" value={formTitle} onChange={e => setFormTitle(e.target.value)} />
             <div className="flex gap-2">
@@ -553,17 +811,26 @@ export default function AdventureView() {
             <Textarea placeholder="Descrição..." value={formDesc} onChange={e => setFormDesc(e.target.value)} rows={4} />
           </div>
           <DialogFooter>
-            <Button onClick={handleAddRumor} className="btn-d20">Adicionar</Button>
+            <Button onClick={handleAddRumor} className="btn-d20">{editRumorId ? 'Atualizar' : 'Adicionar'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Map dialog */}
-      <Dialog open={mapDialog} onOpenChange={setMapDialog}>
+      <Dialog open={mapDialog} onOpenChange={(open) => {
+        setMapDialog(open);
+        if (!open) {
+          setEditMapId(null);
+          setFormTitle('');
+          setMapFile(null);
+        }
+      }}>
         <DialogContent className="parchment">
-          <DialogHeader><DialogTitle className="font-cinzel">Carregar Mapa</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle className="font-cinzel">{editMapId ? 'Editar' : 'Nova'} Mapa</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <Input placeholder="Nome do mapa" value={formTitle} onChange={e => setFormTitle(e.target.value)} />
+            {!editMapId && <p className="text-sm text-muted-foreground">Selecione a imagem do mapa</p>}
+            {editMapId && <p className="text-sm text-muted-foreground">Opcionalmente, escolha uma nova imagem para o mapa</p>}
             <div
               className="border-2 border-dashed border-border rounded-lg p-6 text-center cursor-pointer hover:border-primary/50 transition-colors"
               onClick={() => fileInputRef.current?.click()}
@@ -580,29 +847,43 @@ export default function AdventureView() {
             </div>
           </div>
           <DialogFooter>
-            <Button onClick={handleAddMap} className="btn-d20" disabled={!mapFile}>Carregar</Button>
+            <Button onClick={handleAddMap} className="btn-d20" disabled={!formTitle.trim() || (!mapFile && !editMapId)}>{editMapId ? 'Atualizar' : 'Carregar'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* DM Note dialog */}
-      <Dialog open={noteDialog} onOpenChange={setNoteDialog}>
+      <Dialog open={noteDialog} onOpenChange={(open) => {
+        setNoteDialog(open);
+        if (!open) {
+          setEditNoteId(null);
+          setFormTitle('');
+          setFormDesc('');
+        }
+      }}>
         <DialogContent className="parchment">
-          <DialogHeader><DialogTitle className="font-cinzel">Nova Nota do Mestre</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle className="font-cinzel">{editNoteId ? 'Editar' : 'Nova'} Nota do Mestre</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <Input placeholder="Título" value={formTitle} onChange={e => setFormTitle(e.target.value)} />
             <Textarea placeholder="Conteúdo..." value={formDesc} onChange={e => setFormDesc(e.target.value)} rows={6} />
           </div>
           <DialogFooter>
-            <Button onClick={handleAddNote} className="btn-d20">Adicionar</Button>
+            <Button onClick={handleAddNote} className="btn-d20">{editNoteId ? 'Atualizar' : 'Adicionar'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Bestiary dialog */}
-      <Dialog open={bestiaryDialog} onOpenChange={setBestiaryDialog}>
+      <Dialog open={bestiaryDialog} onOpenChange={(open) => {
+        setBestiaryDialog(open);
+        if (!open) {
+          setMonsterJson('');
+          setMonsterImageFile(null);
+          setEditingMonsterId(null);
+        }
+      }}>
         <DialogContent className="parchment max-w-2xl">
-          <DialogHeader><DialogTitle className="font-cinzel">Adicionar Monstro / NPC</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle className="font-cinzel">{editingMonsterId ? 'Editar' : 'Adicionar'} Monstro / NPC</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">Cole o JSON do monstro ou faça upload de um arquivo .json</p>
             <div
@@ -615,6 +896,44 @@ export default function AdventureView() {
               </div>
               <input ref={jsonFileInputRef} type="file" accept=".json,application/json" className="hidden" onChange={handleJsonFileUpload} />
             </div>
+            {editingMonsterId && (
+              <>
+                <p className="text-sm text-muted-foreground">Ou carregue uma nova imagem para o monstro:</p>
+                <div
+                  className="border-2 border-dashed border-border rounded-lg p-4 text-center cursor-pointer hover:border-primary/50 transition-colors"
+                  onClick={() => monsterImageInputRef.current?.click()}
+                >
+                  {monsterImageFile ? (
+                    <p className="text-sm">{monsterImageFile.name}</p>
+                  ) : (
+                    <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                      <Upload className="w-6 h-6" />
+                      <p className="text-sm">Clique para selecionar imagem</p>
+                    </div>
+                  )}
+                  <input ref={monsterImageInputRef} type="file" accept="image/*" className="hidden" onChange={e => setMonsterImageFile(e.target.files?.[0] || null)} />
+                </div>
+              </>
+            )}
+            {!editingMonsterId && (
+              <>
+                <p className="text-sm text-muted-foreground">Opcionalmente, carregue uma imagem avatar para o monstro:</p>
+                <div
+                  className="border-2 border-dashed border-border rounded-lg p-4 text-center cursor-pointer hover:border-primary/50 transition-colors"
+                  onClick={() => monsterImageInputRef.current?.click()}
+                >
+                  {monsterImageFile ? (
+                    <p className="text-sm">{monsterImageFile.name}</p>
+                  ) : (
+                    <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                      <Upload className="w-6 h-6" />
+                      <p className="text-sm">Clique para selecionar imagem</p>
+                    </div>
+                  )}
+                  <input ref={monsterImageInputRef} type="file" accept="image/*" className="hidden" onChange={e => setMonsterImageFile(e.target.files?.[0] || null)} />
+                </div>
+              </>
+            )}
             <Textarea
               placeholder='{"monster": {"name": "...", ...}}'
               value={monsterJson}
@@ -624,8 +943,20 @@ export default function AdventureView() {
             />
           </div>
           <DialogFooter>
-            <Button onClick={handleAddMonster} className="btn-d20" disabled={!monsterJson.trim()}>Adicionar</Button>
+            <Button onClick={handleAddMonster} className="btn-d20" disabled={!monsterJson.trim()}>{editingMonsterId ? 'Atualizar' : 'Adicionar'}</Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Image viewer dialog */}
+      <Dialog open={imageViewerDialog} onOpenChange={setImageViewerDialog}>
+        <DialogContent className="parchment max-w-2xl">
+          <DialogHeader><DialogTitle className="font-cinzel">Visualizar Imagem</DialogTitle></DialogHeader>
+          {viewImageUrl && (
+            <div className="flex justify-center">
+              <img src={viewImageUrl} alt="Monster" className="max-w-full max-h-96 rounded-lg border border-primary" />
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 

@@ -1,4 +1,7 @@
+import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Skull } from 'lucide-react';
 
 interface MonsterData {
   name: string;
@@ -9,6 +12,7 @@ interface MonsterData {
   hit_points: { average: number; formula: string };
   speed: string;
   initiative?: number;
+  image_url?: string;
   stats: {
     str: { value: number; mod: number; save: number };
     dex: { value: number; mod: number; save: number };
@@ -36,18 +40,35 @@ function formatMod(mod: number) {
   return mod >= 0 ? `+${mod}` : `${mod}`;
 }
 
-export default function MonsterStatBlock({ data }: { data: MonsterData }) {
+export default function MonsterStatBlock({ data, onImageClick }: { data: MonsterData; onImageClick?: () => void }) {
   const m = data;
 
   return (
     <div className="parchment p-4 space-y-3 border-l-4 border-primary font-crimson text-sm">
       {/* Header */}
       <div className="border-b-2 border-primary pb-2">
-        <div className="flex justify-between items-start">
-          <h3 className="font-cinzel text-xl font-bold text-primary uppercase tracking-wide">{m.name}</h3>
+        <div className="flex justify-between items-start gap-3">
+          <div className="flex items-start gap-3 flex-1">
+            {m.image_url && (
+              <img
+                src={m.image_url}
+                alt={m.name}
+                className="w-16 h-16 rounded-lg object-cover border-2 border-primary cursor-pointer hover:opacity-80 transition-opacity flex-shrink-0"
+                onClick={onImageClick}
+              />
+            )}
+            {!m.image_url && (
+              <div className="w-16 h-16 rounded-lg bg-primary/20 flex items-center justify-center flex-shrink-0">
+                <Skull className="w-8 h-8 text-primary" />
+              </div>
+            )}
+            <div className="flex-1">
+              <h3 className="font-cinzel text-xl font-bold text-primary uppercase tracking-wide">{m.name}</h3>
+              <p className="text-muted-foreground italic">{m.size} {m.type}, {m.alignment}</p>
+            </div>
+          </div>
           <Badge variant="outline" className="border-primary text-primary font-cinzel text-xs">CR {m.challenge_rating}</Badge>
         </div>
-        <p className="text-muted-foreground italic">{m.size} {m.type}, {m.alignment}</p>
       </div>
 
       {/* Basic info */}
