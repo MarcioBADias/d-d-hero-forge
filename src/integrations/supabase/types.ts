@@ -14,6 +14,41 @@ export type Database = {
   }
   public: {
     Tables: {
+      adventure_bestiary: {
+        Row: {
+          adventure_id: string
+          challenge_rating: string
+          created_at: string
+          id: string
+          monster_data: Json
+          name: string
+        }
+        Insert: {
+          adventure_id: string
+          challenge_rating?: string
+          created_at?: string
+          id?: string
+          monster_data: Json
+          name: string
+        }
+        Update: {
+          adventure_id?: string
+          challenge_rating?: string
+          created_at?: string
+          id?: string
+          monster_data?: Json
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "adventure_bestiary_adventure_id_fkey"
+            columns: ["adventure_id"]
+            isOneToOne: false
+            referencedRelation: "adventures"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       adventure_characters: {
         Row: {
           adventure_id: string

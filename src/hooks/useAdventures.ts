@@ -62,6 +62,15 @@ export interface AdventureCharacter {
   joined_at: string;
 }
 
+export interface BestiaryEntry {
+  id: string;
+  adventure_id: string;
+  name: string;
+  challenge_rating: string;
+  monster_data: any;
+  created_at: string;
+}
+
 export function useAdventures() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -236,6 +245,21 @@ export function useAdventureDetails(adventureId: string | undefined) {
     enabled: !!adventureId && isOwner,
   });
 
+  const { data: bestiary = [] } = useQuery({
+    queryKey: ['bestiary', adventureId],
+    queryFn: async () => {
+      if (!adventureId) return [];
+      const { data, error } = await supabase
+        .from('adventure_bestiary')
+        .select('*')
+        .eq('adventure_id', adventureId)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return (data || []) as BestiaryEntry[];
+    },
+    enabled: !!adventureId,
+  });
+
   const invalidateAll = () => {
     queryClient.invalidateQueries({ queryKey: ['adventure', adventureId] });
     queryClient.invalidateQueries({ queryKey: ['adventure-characters', adventureId] });
@@ -244,9 +268,10 @@ export function useAdventureDetails(adventureId: string | undefined) {
     queryClient.invalidateQueries({ queryKey: ['rumors', adventureId] });
     queryClient.invalidateQueries({ queryKey: ['maps', adventureId] });
     queryClient.invalidateQueries({ queryKey: ['dm-notes', adventureId] });
+    queryClient.invalidateQueries({ queryKey: ['bestiary', adventureId] });
   };
 
-  return { adventure, isOwner, characters, sessions, locations, rumors, maps, dmNotes, invalidateAll };
+  return { adventure, isOwner, characters, sessions, locations, rumors, maps, dmNotes, bestiary, invalidateAll };
 }
 
 export function useAllAdventures() {

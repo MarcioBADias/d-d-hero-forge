@@ -5,7 +5,7 @@ import { useAdventureDetails } from '@/hooks/useAdventures';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -15,22 +15,25 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
 import { Footer } from '@/components/layout/Footer';
+import MonsterStatBlock from '@/components/adventure/MonsterStatBlock';
 import { toast } from 'sonner';
 import {
   ArrowLeft, Users, ScrollText, MapPin, Compass, Map, BookLock,
-  Plus, ChevronDown, ChevronUp, Sword, Trash2, Upload, Eye
+  Plus, ChevronDown, ChevronUp, Sword, Trash2, Upload, Skull
 } from 'lucide-react';
 
 export default function AdventureView() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { adventure, isOwner, characters, sessions, locations, rumors, maps, dmNotes, invalidateAll } = useAdventureDetails(id);
+  const { adventure, isOwner, characters, sessions, locations, rumors, maps, dmNotes, bestiary, invalidateAll } = useAdventureDetails(id);
 
   const [expanded, setExpanded] = useState<Record<string, boolean>>({
-    characters: true, sessions: false, locations: false, rumors: false, maps: false, dmNotes: false,
+    characters: true, sessions: false, locations: false, rumors: false, maps: false, dmNotes: false, bestiary: false,
   });
   const [selectedCharId, setSelectedCharId] = useState<string | null>(null);
+  const [expandedNotes, setExpandedNotes] = useState<Record<string, boolean>>({});
+  const [expandedMonsters, setExpandedMonsters] = useState<Record<string, boolean>>({});
 
   // Dialog states
   const [sessionDialog, setSessionDialog] = useState(false);
@@ -39,6 +42,7 @@ export default function AdventureView() {
   const [mapDialog, setMapDialog] = useState(false);
   const [noteDialog, setNoteDialog] = useState(false);
   const [progressDialog, setProgressDialog] = useState(false);
+  const [bestiaryDialog, setBestiaryDialog] = useState(false);
 
   // Form states
   const [formTitle, setFormTitle] = useState('');
@@ -47,9 +51,13 @@ export default function AdventureView() {
   const [formType, setFormType] = useState('rumor');
   const [mapFile, setMapFile] = useState<File | null>(null);
   const [progressValue, setProgressValue] = useState(adventure?.progress || 0);
+  const [monsterJson, setMonsterJson] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const jsonFileInputRef = useRef<HTMLInputElement>(null);
 
   const toggle = (key: string) => setExpanded(prev => ({ ...prev, [key]: !prev[key] }));
+  const toggleNote = (id: string) => setExpandedNotes(prev => ({ ...prev, [id]: !prev[id] }));
+  const toggleMonster = (id: string) => setExpandedMonsters(prev => ({ ...prev, [id]: !prev[id] }));
 
   if (!adventure) {
     return (
@@ -133,6 +141,35 @@ export default function AdventureView() {
     if (error) { toast.error(error.message); return; }
     toast.success('Nota adicionada!');
     setNoteDialog(false); setFormTitle(''); setFormDesc(''); invalidateAll();
+  };
+
+  const handleAddMonster = async () => {
+    try {
+      const parsed = JSON.parse(monsterJson);
+      const monsterData = parsed.monster || parsed;
+      if (!monsterData.name) { toast.error('JSON inválido: campo "name" não encontrado'); return; }
+      const { error } = await supabase.from('adventure_bestiary').insert({
+        adventure_id: id,
+        name: monsterData.name,
+        challenge_rating: monsterData.challenge_rating || '0',
+        monster_data: monsterData,
+      });
+      if (error) { toast.error(error.message); return; }
+      toast.success(`${monsterData.name} adicionado ao bestiário!`);
+      setBestiaryDialog(false); setMonsterJson(''); invalidateAll();
+    } catch {
+      toast.error('JSON inválido. Verifique o formato.');
+    }
+  };
+
+  const handleJsonFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setMonsterJson(ev.target?.result as string || '');
+    };
+    reader.readAsText(file);
   };
 
   const handleUpdateProgress = async () => {
@@ -347,6 +384,54 @@ export default function AdventureView() {
           </AnimatePresence>
         </Card>
 
+        {/* Bestiary */}
+        <Card className="parchment">
+          <SectionHeader title="Bestiário da Aventura" icon={Skull} sectionKey="bestiary" onAdd={() => { setMonsterJson(''); setBestiaryDialog(true); }} />
+          <AnimatePresence>
+            {expanded.bestiary && (
+              <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                <CardContent className="pt-0 space-y-2">
+                  {bestiary.length === 0 ? (
+                    <p className="text-sm text-muted-foreground py-4">Nenhum monstro/NPC cadastrado.</p>
+                  ) : bestiary.map(b => (
+                    <Card key={b.id} className="bg-secondary/30">
+                      <CardContent className="p-0">
+                        <div
+                          className="flex items-center justify-between p-3 cursor-pointer hover:bg-secondary/50 transition-colors"
+                          onClick={() => toggleMonster(b.id)}
+                        >
+                          <div className="flex items-center gap-2">
+                            <Skull className="w-4 h-4 text-primary" />
+                            <span className="font-semibold">{b.name}</span>
+                            <Badge variant="outline" className="border-primary text-primary text-xs">CR {b.challenge_rating}</Badge>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            {isOwner && (
+                              <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); handleDelete('adventure_bestiary', b.id); }}>
+                                <Trash2 className="w-4 h-4 text-destructive" />
+                              </Button>
+                            )}
+                            {expandedMonsters[b.id] ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+                          </div>
+                        </div>
+                        <AnimatePresence>
+                          {expandedMonsters[b.id] && (
+                            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                              <div className="px-3 pb-3">
+                                <MonsterStatBlock data={b.monster_data} />
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </CardContent>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </Card>
+
         {/* Maps */}
         <Card className="parchment">
           <SectionHeader title="Mapas" icon={Map} sectionKey="maps" onAdd={() => { setFormTitle(''); setMapFile(null); setMapDialog(true); }} />
@@ -377,7 +462,7 @@ export default function AdventureView() {
           </AnimatePresence>
         </Card>
 
-        {/* DM Notes - only for owner */}
+        {/* DM Notes - only for owner, with collapsible individual notes */}
         {isOwner && (
           <Card className="parchment border-primary/30">
             <SectionHeader title="Notas do Mestre" icon={BookLock} sectionKey="dmNotes" onAdd={() => { setFormTitle(''); setFormDesc(''); setNoteDialog(true); }} />
@@ -389,16 +474,31 @@ export default function AdventureView() {
                       <p className="text-sm text-muted-foreground py-4">Nenhuma nota do mestre.</p>
                     ) : dmNotes.map(n => (
                       <Card key={n.id} className="bg-secondary/30 border-primary/20">
-                        <CardContent className="p-3">
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <p className="font-semibold">{n.title}</p>
-                              {n.content && <p className="text-sm mt-1 whitespace-pre-wrap">{n.content}</p>}
+                        <CardContent className="p-0">
+                          <div
+                            className="flex items-center justify-between p-3 cursor-pointer hover:bg-secondary/50 transition-colors"
+                            onClick={() => toggleNote(n.id)}
+                          >
+                            <div className="flex items-center gap-2">
+                              <BookLock className="w-4 h-4 text-primary" />
+                              <span className="font-semibold">{n.title}</span>
                             </div>
-                            <Button size="icon" variant="ghost" onClick={() => handleDelete('dm_notes', n.id)}>
-                              <Trash2 className="w-4 h-4 text-destructive" />
-                            </Button>
+                            <div className="flex items-center gap-1">
+                              <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); handleDelete('dm_notes', n.id); }}>
+                                <Trash2 className="w-4 h-4 text-destructive" />
+                              </Button>
+                              {expandedNotes[n.id] ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+                            </div>
                           </div>
+                          <AnimatePresence>
+                            {expandedNotes[n.id] && n.content && (
+                              <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                                <div className="px-3 pb-3">
+                                  <p className="text-sm whitespace-pre-wrap">{n.content}</p>
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
                         </CardContent>
                       </Card>
                     ))}
@@ -495,6 +595,36 @@ export default function AdventureView() {
           </div>
           <DialogFooter>
             <Button onClick={handleAddNote} className="btn-d20">Adicionar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bestiary dialog */}
+      <Dialog open={bestiaryDialog} onOpenChange={setBestiaryDialog}>
+        <DialogContent className="parchment max-w-2xl">
+          <DialogHeader><DialogTitle className="font-cinzel">Adicionar Monstro / NPC</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">Cole o JSON do monstro ou faça upload de um arquivo .json</p>
+            <div
+              className="border-2 border-dashed border-border rounded-lg p-4 text-center cursor-pointer hover:border-primary/50 transition-colors"
+              onClick={() => jsonFileInputRef.current?.click()}
+            >
+              <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                <Upload className="w-6 h-6" />
+                <p className="text-sm">Upload arquivo .json</p>
+              </div>
+              <input ref={jsonFileInputRef} type="file" accept=".json,application/json" className="hidden" onChange={handleJsonFileUpload} />
+            </div>
+            <Textarea
+              placeholder='{"monster": {"name": "...", ...}}'
+              value={monsterJson}
+              onChange={e => setMonsterJson(e.target.value)}
+              rows={12}
+              className="font-mono text-xs"
+            />
+          </div>
+          <DialogFooter>
+            <Button onClick={handleAddMonster} className="btn-d20" disabled={!monsterJson.trim()}>Adicionar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
