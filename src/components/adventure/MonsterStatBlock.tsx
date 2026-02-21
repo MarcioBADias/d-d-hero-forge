@@ -20,6 +20,9 @@ interface MonsterData {
   skills?: Record<string, number>;
   senses?: Record<string, string | number>;
   languages?: string[];
+  damage_resistances?: string[];
+  damage_immunities?: string[];
+  condition_immunities?: string[];
   challenge_rating: string;
   proficiency_bonus?: number;
   traits?: Array<{ name: string; description: string }>;
@@ -94,6 +97,15 @@ export default function MonsterStatBlock({ data }: { data: MonsterData }) {
         )}
         {m.languages && m.languages.length > 0 && (
           <p><span className="font-semibold text-primary">Languages</span> {m.languages.join(', ')}</p>
+        )}
+        {m.damage_resistances && m.damage_resistances.length > 0 && (
+          <p><span className="font-semibold text-primary">Damage Resistances</span> {m.damage_resistances.join(', ')}</p>
+        )}
+        {m.damage_immunities && m.damage_immunities.length > 0 && (
+          <p><span className="font-semibold text-primary">Damage Immunities</span> {m.damage_immunities.join(', ')}</p>
+        )}
+        {m.condition_immunities && m.condition_immunities.length > 0 && (
+          <p><span className="font-semibold text-primary">Condition Immunities</span> {m.condition_immunities.join(', ')}</p>
         )}
         {m.proficiency_bonus !== undefined && (
           <p><span className="font-semibold text-primary">Proficiency Bonus</span> +{m.proficiency_bonus}</p>
