@@ -234,7 +234,9 @@ export default function Dashboard() {
             </motion.div>
           ) : (
             <motion.div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" initial="hidden" animate="visible" variants={{ visible: { transition: { staggerChildren: 0.1 } } }}>
-              {adventures.map(adv => (
+              {adventures.map(adv => {
+                const isAdvOwner = adv.user_id === user?.id;
+                return (
                 <motion.div key={adv.id} variants={cardVariants} layout whileHover={{ y: -4 }} transition={{ type: 'spring', stiffness: 300 }}>
                   <Card className="parchment hover:shadow-lg hover:border-primary/30 transition-all cursor-pointer group" onClick={() => navigate(`/adventure/${adv.id}`)}>
                     <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-arcane/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
@@ -243,25 +245,32 @@ export default function Dashboard() {
                         <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
                           <Map className="w-6 h-6 text-primary" />
                         </div>
-                        <div>
+                        <div className="flex-1">
                           <CardTitle className="font-cinzel text-lg">{adv.title}</CardTitle>
-                          <p className="text-xs text-muted-foreground">Progresso: {adv.progress}%</p>
+                          <p className="text-xs text-muted-foreground">
+                            {isAdvOwner ? 'Mestre' : 'Participante'} • Progresso: {adv.progress}%
+                          </p>
                         </div>
+                        {!isAdvOwner && (
+                          <Badge variant="outline" className="text-xs">Jogador</Badge>
+                        )}
                       </div>
                     </CardHeader>
                     <CardContent className="relative">
                       <div className="w-full bg-secondary rounded-full h-2 mb-3">
                         <div className="bg-primary h-2 rounded-full transition-all" style={{ width: `${adv.progress}%` }} />
                       </div>
-                      <div className="flex gap-2">
-                        <Button variant="destructive" size="sm" onClick={(e) => { e.stopPropagation(); setDeleteAdvId(adv.id); }}>
-                          <Trash2 className="w-3 h-3" />
-                        </Button>
-                      </div>
+                      {isAdvOwner && (
+                        <div className="flex gap-2">
+                          <Button variant="destructive" size="sm" onClick={(e) => { e.stopPropagation(); setDeleteAdvId(adv.id); }}>
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 </motion.div>
-              ))}
+              )})}
             </motion.div>
           )}
         </section>

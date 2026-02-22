@@ -1,33 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Character, AbilityBonuses, AbilityScores } from '@/types/character';
+import { Character, AbilityBonuses, AbilityScores, Coins, DeathSaves, SpellSlotState } from '@/types/character';
 import { toast } from 'sonner';
 import { Json } from '@/integrations/supabase/types';
-
-interface DbCharacter {
-  id: string;
-  user_id: string | null;
-  name: string;
-  level: number;
-  image_url: string | null;
-  background_name: string | null;
-  background_story: string | null;
-  background_ability_bonuses: Json | null;
-  race_name: string | null;
-  race_options: Json | null;
-  classes: Json | null;
-  attribute_method: string | null;
-  base_abilities: Json | null;
-  feats: string[] | null;
-  feat_ability_bonuses: Json | null;
-  skill_proficiencies: string[] | null;
-  spells_known: string[] | null;
-  is_public: boolean | null;
-  share_mode: string | null;
-  created_at: string;
-  updated_at: string;
-}
 
 function parseAbilityBonuses(json: Json | null): AbilityBonuses {
   if (!json || typeof json !== 'object' || Array.isArray(json)) {
@@ -86,7 +62,79 @@ function parseRaceOptions(json: Json | null): Record<string, string> | undefined
   return Object.keys(result).length > 0 ? result : undefined;
 }
 
-function dbToCharacter(db: DbCharacter): Character {
+function parseCoins(json: Json | null): Coins {
+  if (!json || typeof json !== 'object' || Array.isArray(json)) {
+    return { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 };
+  }
+  const obj = json as Record<string, Json | undefined>;
+  return {
+    cp: typeof obj.cp === 'number' ? obj.cp : 0,
+    sp: typeof obj.sp === 'number' ? obj.sp : 0,
+    ep: typeof obj.ep === 'number' ? obj.ep : 0,
+    gp: typeof obj.gp === 'number' ? obj.gp : 0,
+    pp: typeof obj.pp === 'number' ? obj.pp : 0,
+  };
+}
+
+function parseDeathSaves(json: Json | null): DeathSaves {
+  if (!json || typeof json !== 'object' || Array.isArray(json)) {
+    return { successes: 0, failures: 0 };
+  }
+  const obj = json as Record<string, Json | undefined>;
+  return {
+    successes: typeof obj.successes === 'number' ? obj.successes : 0,
+    failures: typeof obj.failures === 'number' ? obj.failures : 0,
+  };
+}
+
+function parseSpellSlots(json: Json | null): SpellSlotState {
+  if (!json || typeof json !== 'object' || Array.isArray(json)) return {};
+  const result: SpellSlotState = {};
+  const obj = json as Record<string, Json | undefined>;
+  for (const key in obj) {
+    const val = obj[key];
+    if (val && typeof val === 'object' && !Array.isArray(val)) {
+      const slot = val as Record<string, Json | undefined>;
+      result[parseInt(key)] = {
+        max: typeof slot.max === 'number' ? slot.max : 0,
+        used: typeof slot.used === 'number' ? slot.used : 0,
+      };
+    }
+  }
+  return result;
+}
+
+function parseStringRecord(json: Json | null): Record<string, boolean> {
+  if (!json || typeof json !== 'object' || Array.isArray(json)) return {};
+  const result: Record<string, boolean> = {};
+  const obj = json as Record<string, Json | undefined>;
+  for (const key in obj) {
+    result[key] = !!obj[key];
+  }
+  return result;
+}
+
+function parseCustomEquipment(json: Json | null): { name: string; description: string; type: 'mundane' | 'magic' | 'custom' }[] {
+  if (!json || !Array.isArray(json)) return [];
+  return json.map((item) => {
+    if (typeof item === 'object' && item !== null && !Array.isArray(item)) {
+      const obj = item as Record<string, Json | undefined>;
+      return {
+        name: typeof obj.name === 'string' ? obj.name : '',
+        description: typeof obj.description === 'string' ? obj.description : '',
+        type: (typeof obj.type === 'string' ? obj.type : 'custom') as 'mundane' | 'magic' | 'custom',
+      };
+    }
+    return { name: '', description: '', type: 'custom' as const };
+  });
+}
+
+function parseFeatSelections(json: Json | null): Record<string, any> | undefined {
+  if (!json || typeof json !== 'object' || Array.isArray(json)) return {};
+  return json as Record<string, any>;
+}
+
+function dbToCharacter(db: any): Character {
   return {
     id: db.id,
     name: db.name,
@@ -102,8 +150,26 @@ function dbToCharacter(db: DbCharacter): Character {
     baseAbilities: parseAbilityScores(db.base_abilities),
     feats: db.feats || [],
     featAbilityBonuses: parseAbilityBonuses(db.feat_ability_bonuses),
+    featSelections: parseFeatSelections(db.feat_selections),
     skills: db.skill_proficiencies || [],
-    spellsKnown: db.spells_known || undefined,
+    spellsKnown: db.spells_known || [],
+    preparedSpells: db.prepared_spells || [],
+    spellSlots: parseSpellSlots(db.spell_slots),
+    selectedEquipment: db.selected_equipment || [],
+    customEquipment: parseCustomEquipment(db.custom_equipment),
+    equippedWeapons: db.equipped_weapons || [],
+    weaponEquipStates: parseStringRecord(db.weapon_equip_states),
+    armorEquipStates: parseStringRecord(db.armor_equip_states),
+    armorAC: db.armor_ac ?? undefined,
+    shieldAC: db.shield_ac ?? undefined,
+    equippedArmor: db.equipped_armor || undefined,
+    equippedShield: db.equipped_shield || undefined,
+    currentHp: db.current_hp ?? undefined,
+    tempHp: db.temp_hp ?? 0,
+    deathSaves: parseDeathSaves(db.death_saves),
+    inventory: db.inventory || '',
+    coins: parseCoins(db.coins),
+    adventureNotes: db.adventure_notes || '',
     createdAt: new Date(db.created_at),
     updatedAt: new Date(db.updated_at),
     userId: db.user_id || undefined,
@@ -127,8 +193,26 @@ function characterToDb(char: Partial<Character>, userId?: string) {
     base_abilities: (char.baseAbilities || { str: 8, dex: 8, con: 8, int: 8, wis: 8, cha: 8 }) as unknown as Json,
     feats: char.feats || [],
     feat_ability_bonuses: (char.featAbilityBonuses || { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 }) as unknown as Json,
-    skill_proficiencies: (char.skills || []) as unknown as Json,
-    spells_known: char.spellsKnown || null,
+    feat_selections: (char.featSelections || {}) as unknown as Json,
+    skill_proficiencies: char.skills || [],
+    spells_known: char.spellsKnown || [],
+    prepared_spells: char.preparedSpells || [],
+    spell_slots: (char.spellSlots || {}) as unknown as Json,
+    selected_equipment: char.selectedEquipment || [],
+    custom_equipment: (char.customEquipment || []) as unknown as Json,
+    equipped_weapons: char.equippedWeapons || [],
+    weapon_equip_states: (char.weaponEquipStates || {}) as unknown as Json,
+    armor_equip_states: (char.armorEquipStates || {}) as unknown as Json,
+    armor_ac: char.armorAC ?? null,
+    shield_ac: char.shieldAC ?? null,
+    equipped_armor: char.equippedArmor || null,
+    equipped_shield: char.equippedShield || null,
+    current_hp: char.currentHp ?? null,
+    temp_hp: char.tempHp ?? 0,
+    death_saves: (char.deathSaves || { successes: 0, failures: 0 }) as unknown as Json,
+    inventory: char.inventory || '',
+    coins: (char.coins || { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 }) as unknown as Json,
+    adventure_notes: char.adventureNotes || '',
     is_public: char.isPublic || false,
   };
 }
@@ -149,7 +233,7 @@ export function useCharacters() {
         .order('updated_at', { ascending: false });
       
       if (error) throw error;
-      return (data || []).map((item) => dbToCharacter(item as unknown as DbCharacter));
+      return (data || []).map((item: any) => dbToCharacter(item));
     },
     enabled: !!user,
   });
@@ -159,57 +243,26 @@ export function useCharacters() {
       if (!user) throw new Error('Você precisa estar logado para salvar');
       const dbData = characterToDb(character, user.id);
 
-      try {
-        if (character.id) {
-          const { data, error } = await supabase
-            .from('characters')
-            .update(dbData)
-            .eq('id', character.id)
-            .eq('user_id', user.id)
-            .select()
-            .single();
+      if (character.id) {
+        const { data, error } = await supabase
+          .from('characters')
+          .update(dbData as any)
+          .eq('id', character.id)
+          .eq('user_id', user.id)
+          .select()
+          .single();
 
-          if (error) throw error;
-          return dbToCharacter(data as unknown as DbCharacter);
-        } else {
-          const { data, error } = await supabase
-            .from('characters')
-            .insert(dbData)
-            .select()
-            .single();
+        if (error) throw error;
+        return dbToCharacter(data);
+      } else {
+        const { data, error } = await supabase
+          .from('characters')
+          .insert(dbData as any)
+          .select()
+          .single();
 
-          if (error) throw error;
-          return dbToCharacter(data as unknown as DbCharacter);
-        }
-      } catch (err: any) {
-        // Workaround for PostgREST schema cache when new column isn't present on remote DB
-        const message = err?.message || err?.error_description || '';
-        if (message.includes('skill_proficiencies') || err?.code === 'PGRST204') {
-          const dbDataNoSkills = { ...dbData } as Record<string, unknown>;
-          delete dbDataNoSkills.skill_proficiencies;
-
-          if (character.id) {
-            const { data, error } = await supabase
-              .from('characters')
-              .update(dbDataNoSkills as any)
-              .eq('id', character.id)
-              .eq('user_id', user.id)
-              .select()
-              .single();
-            if (error) throw error;
-            return dbToCharacter(data as unknown as DbCharacter);
-          } else {
-            const { data, error } = await supabase
-              .from('characters')
-              .insert(dbDataNoSkills as any)
-              .select()
-              .single();
-            if (error) throw error;
-            return dbToCharacter(data as unknown as DbCharacter);
-          }
-        }
-
-        throw err;
+        if (error) throw error;
+        return dbToCharacter(data);
       }
     },
     onSuccess: () => {
@@ -248,7 +301,7 @@ export function useCharacters() {
       
       const { error } = await supabase
         .from('characters')
-        .update({ is_public: isPublic })
+        .update({ is_public: isPublic } as any)
         .eq('id', id)
         .eq('user_id', user.id);
       
@@ -270,9 +323,22 @@ export function useCharacters() {
 }
 
 export function usePublicCharacter(id: string) {
+  const { user } = useAuth();
   return useQuery({
-    queryKey: ['character', id],
+    queryKey: ['character', id, user?.id],
     queryFn: async () => {
+      // Try to fetch as owner first (can see own private chars)
+      if (user) {
+        const { data: ownData } = await supabase
+          .from('characters')
+          .select('*')
+          .eq('id', id)
+          .eq('user_id', user.id)
+          .maybeSingle();
+        if (ownData) return dbToCharacter(ownData);
+      }
+      
+      // Fall back to public
       const { data, error } = await supabase
         .from('characters')
         .select('*')
@@ -282,7 +348,7 @@ export function usePublicCharacter(id: string) {
       
       if (error) throw error;
       if (!data) return null;
-      return dbToCharacter(data as unknown as DbCharacter);
+      return dbToCharacter(data);
     },
     enabled: !!id,
   });

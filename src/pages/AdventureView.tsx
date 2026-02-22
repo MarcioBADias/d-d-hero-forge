@@ -445,6 +445,11 @@ export default function AdventureView() {
                                 </p>
                                 {c.background_name && <p className="text-xs text-muted-foreground">{c.background_name}</p>}
                               </div>
+                              {isOwner && (
+                                <Button size="icon" variant="ghost" className="shrink-0" onClick={(e) => { e.stopPropagation(); handleDelete('adventure_characters', ac.id); }}>
+                                  <Trash2 className="w-4 h-4 text-destructive" />
+                                </Button>
+                              )}
                             </CardContent>
                           </Card>
                         );
@@ -581,7 +586,7 @@ export default function AdventureView() {
           </AnimatePresence>
         </Card>
 
-        {/* Bestiary */}
+        {/* Bestiary - only for owner */}
         {isOwner && (
           <Card className="parchment">
             <SectionHeader title="Bestiário da Aventura" icon={Skull} sectionKey="bestiary" onAdd={() => { setMonsterJson(''); setMonsterImageFile(null); setEditingMonsterId(null); setBestiaryDialog(true); }} />
@@ -591,7 +596,7 @@ export default function AdventureView() {
                   <CardContent className="pt-0 space-y-2">
                     {bestiary.length === 0 ? (
                       <p className="text-sm text-muted-foreground py-4">Nenhum monstro/NPC cadastrado.</p>
-                    ) : bestiary.map((b, index) => (
+                    ) : bestiary.map((b: any) => (
                       <Card 
                         key={b.id} 
                         className="bg-secondary/30"
@@ -639,17 +644,17 @@ export default function AdventureView() {
                                       setImageViewerDialog(true);
                                     }
                                   }} />
-                              </div>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </CardContent>
-              </motion.div>
-            )}
-          </AnimatePresence>
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </CardContent>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </Card>
         )}
 

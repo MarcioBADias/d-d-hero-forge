@@ -149,70 +149,127 @@ export type Database = {
       }
       characters: {
         Row: {
+          adventure_notes: string | null
+          armor_ac: number | null
+          armor_equip_states: Json | null
           attribute_method: string | null
           background_ability_bonuses: Json | null
           background_name: string | null
           background_story: string | null
           base_abilities: Json | null
           classes: Json | null
+          coins: Json | null
           created_at: string
+          current_hp: number | null
+          custom_equipment: Json | null
+          death_saves: Json | null
+          equipped_armor: string | null
+          equipped_shield: string | null
+          equipped_weapons: string[] | null
           feat_ability_bonuses: Json | null
+          feat_selections: Json | null
           feats: string[] | null
           id: string
           image_url: string | null
+          inventory: string | null
           is_public: boolean | null
           level: number
           name: string
+          prepared_spells: string[] | null
           race_name: string | null
           race_options: Json | null
+          selected_equipment: string[] | null
           share_mode: string | null
+          shield_ac: number | null
+          skill_proficiencies: string[] | null
+          spell_slots: Json | null
           spells_known: string[] | null
+          temp_hp: number | null
           updated_at: string
           user_id: string | null
+          weapon_equip_states: Json | null
         }
         Insert: {
+          adventure_notes?: string | null
+          armor_ac?: number | null
+          armor_equip_states?: Json | null
           attribute_method?: string | null
           background_ability_bonuses?: Json | null
           background_name?: string | null
           background_story?: string | null
           base_abilities?: Json | null
           classes?: Json | null
+          coins?: Json | null
           created_at?: string
+          current_hp?: number | null
+          custom_equipment?: Json | null
+          death_saves?: Json | null
+          equipped_armor?: string | null
+          equipped_shield?: string | null
+          equipped_weapons?: string[] | null
           feat_ability_bonuses?: Json | null
+          feat_selections?: Json | null
           feats?: string[] | null
           id?: string
           image_url?: string | null
+          inventory?: string | null
           is_public?: boolean | null
           level?: number
           name: string
+          prepared_spells?: string[] | null
           race_name?: string | null
           race_options?: Json | null
+          selected_equipment?: string[] | null
           share_mode?: string | null
+          shield_ac?: number | null
+          skill_proficiencies?: string[] | null
+          spell_slots?: Json | null
           spells_known?: string[] | null
+          temp_hp?: number | null
           updated_at?: string
           user_id?: string | null
+          weapon_equip_states?: Json | null
         }
         Update: {
+          adventure_notes?: string | null
+          armor_ac?: number | null
+          armor_equip_states?: Json | null
           attribute_method?: string | null
           background_ability_bonuses?: Json | null
           background_name?: string | null
           background_story?: string | null
           base_abilities?: Json | null
           classes?: Json | null
+          coins?: Json | null
           created_at?: string
+          current_hp?: number | null
+          custom_equipment?: Json | null
+          death_saves?: Json | null
+          equipped_armor?: string | null
+          equipped_shield?: string | null
+          equipped_weapons?: string[] | null
           feat_ability_bonuses?: Json | null
+          feat_selections?: Json | null
           feats?: string[] | null
           id?: string
           image_url?: string | null
+          inventory?: string | null
           is_public?: boolean | null
           level?: number
           name?: string
+          prepared_spells?: string[] | null
           race_name?: string | null
           race_options?: Json | null
+          selected_equipment?: string[] | null
           share_mode?: string | null
+          shield_ac?: number | null
+          skill_proficiencies?: string[] | null
+          spell_slots?: Json | null
           spells_known?: string[] | null
+          temp_hp?: number | null
           updated_at?: string
           user_id?: string | null
+          weapon_equip_states?: Json | null
         }
         Relationships: []
       }
