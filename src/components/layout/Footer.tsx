@@ -7,7 +7,7 @@ export function Footer() {
         <div className="flex flex-col sm:flex-row items-center justify-between gap-2 text-sm text-muted-foreground">
           <p className="flex items-center gap-1">
             Feito com <Heart className="w-4 h-4 text-blood fill-blood" /> por{' '}
-            <span className="font-semibold text-primary">Mario Dias</span>
+            <span className="font-semibold text-primary">Marcio Dias</span>
           </p>
           <p className="text-xs">
             D&D 5e Character Creator • Regras 2024

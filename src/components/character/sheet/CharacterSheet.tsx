@@ -25,16 +25,54 @@ interface CharacterSheetProps {
   character: Character;
   onEdit: () => void;
   onUpdateCharacter: (updates: Partial<Character>) => void;
+  onSaveChanges?: (changes: Partial<Character>) => Promise<void>;
   readOnly?: boolean;
 }
 
 const abilityKeys: AbilityScore[] = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
 
-export function CharacterSheet({ character, onEdit, onUpdateCharacter, readOnly = false }: CharacterSheetProps) {
+export function CharacterSheet({ character, onEdit, onUpdateCharacter, onSaveChanges, readOnly = false }: CharacterSheetProps) {
   const [showLevelUp, setShowLevelUp] = useState(false);
   const [isEditable, setIsEditable] = useState(false);
+  const [pendingChanges, setPendingChanges] = useState<Partial<Character>>({});
+  const [isSaving, setIsSaving] = useState(false);
 
-  const effectiveReadOnly = !isEditable;
+  const hasPendingChanges = Object.keys(pendingChanges).length > 0;
+  const effectiveReadOnly = readOnly || !isEditable;
+
+  // Merge character with pending changes for display
+  const displayCharacter = { ...character, ...pendingChanges } as Character;
+
+  const handleUpdateCharacter = (updates: Partial<Character>) => {
+    setPendingChanges(prev => ({ ...prev, ...updates }));
+    onUpdateCharacter(updates);
+  };
+
+  const handleSaveChanges = async () => {
+    if (!hasPendingChanges || !onSaveChanges) return;
+    
+    setIsSaving(true);
+    try {
+      await onSaveChanges(pendingChanges);
+      setPendingChanges({});
+      setIsEditable(false);
+    } catch (error) {
+      console.error('Error saving changes:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const toggleEditMode = () => {
+    if (isEditable && hasPendingChanges && onSaveChanges) {
+      handleSaveChanges();
+    } else {
+      setIsEditable(!isEditable);
+      if (isEditable) {
+        setPendingChanges({});
+      }
+    }
+  };
 
   const proficiencyBonus = calculateProficiencyBonus(character.level);
   const primaryClass = character.classes[0];
@@ -59,11 +97,11 @@ export function CharacterSheet({ character, onEdit, onUpdateCharacter, readOnly 
   };
 
   const maxHp = calculateHP();
-  const currentHp = character.currentHp ?? maxHp;
-  const tempHp = character.tempHp ?? 0;
-  const deathSaves = character.deathSaves ?? { successes: 0, failures: 0 };
-  const inventory = character.inventory ?? '';
-  const coins = character.coins ?? { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 };
+  const currentHp = displayCharacter.currentHp ?? maxHp;
+  const tempHp = displayCharacter.tempHp ?? 0;
+  const deathSaves = displayCharacter.deathSaves ?? { successes: 0, failures: 0 };
+  const inventory = displayCharacter.inventory ?? '';
+  const coins = displayCharacter.coins ?? { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 };
   const spellSlots = character.spellSlots ?? {};
   const adventureNotes = character.adventureNotes ?? '';
   
@@ -103,7 +141,7 @@ export function CharacterSheet({ character, onEdit, onUpdateCharacter, readOnly 
 
   const handleLevelUp = () => {
     if (character.level >= 20) return;
-    onUpdateCharacter({
+    handleUpdateCharacter({
       level: character.level + 1,
       classes: character.classes.map((c, i) => i === 0 ? { ...c, level: c.level + 1 } : c),
     });
@@ -134,11 +172,17 @@ export function CharacterSheet({ character, onEdit, onUpdateCharacter, readOnly 
               ) : <div />}
               <Button
                 variant={isEditable ? 'default' : 'ghost'}
-                onClick={() => setIsEditable(!isEditable)}
+                onClick={toggleEditMode}
                 className="gap-2"
                 aria-pressed={isEditable}
+                disabled={isSaving}
               >
-                <Wrench className="w-4 h-4" /> {isEditable ? 'Modo Editável' : 'Ativar Edição'}
+                <Wrench className="w-4 h-4" /> 
+                {isEditable && hasPendingChanges 
+                  ? 'Salvar Edição' 
+                  : isEditable 
+                  ? 'Cancelar' 
+                  : 'Ativar Edição'}
               </Button>
             </div>
             <h1 className="text-xl md:text-2xl font-cinzel text-primary">Ficha do Personagem</h1>
@@ -164,13 +208,16 @@ export function CharacterSheet({ character, onEdit, onUpdateCharacter, readOnly 
                   <div className="flex items-center justify-center md:justify-start gap-3 mb-2">
                     {!effectiveReadOnly ? (
                       <Input
-                        value={character.name || ''}
-                        onChange={(e) => onUpdateCharacter({ name: e.target.value })}
-                        className="text-3xl font-cinzel text-primary p-0 bg-transparent border-0"
+                        value={displayCharacter.name || ''}
+                        onChange={(e) => handleUpdateCharacter({ name: e.target.value })}
+                        className="text-3xl font-cinzel text-primary p-0 bg-transparent border-0 focus-visible:ring-0"
                         placeholder="Sem Nome"
+                        type="text"
+                        autoCapitalize="words"
+                        inputMode="text"
                       />
                     ) : (
-                      <h2 className="text-3xl font-cinzel text-primary">{character.name || 'Sem Nome'}</h2>
+                      <h2 className="text-3xl font-cinzel text-primary">{displayCharacter.name || 'Sem Nome'}</h2>
                     )}
                     {!readOnly && (
                       <Dialog open={showLevelUp} onOpenChange={setShowLevelUp}>
@@ -231,45 +278,45 @@ export function CharacterSheet({ character, onEdit, onUpdateCharacter, readOnly 
             currentHp={currentHp}
             tempHp={tempHp}
             deathSaves={deathSaves}
-            onHpChange={(hp, temp) => onUpdateCharacter({ currentHp: hp, tempHp: temp })}
-            onDeathSavesChange={(saves) => onUpdateCharacter({ deathSaves: saves })}
+            onHpChange={(hp, temp) => handleUpdateCharacter({ currentHp: hp, tempHp: temp })}
+            onDeathSavesChange={(saves) => handleUpdateCharacter({ deathSaves: saves })}
             readOnly={effectiveReadOnly}
           />
 
           {/* Attack Section */}
           <AttackSection
-            equippedWeapons={character.equippedWeapons || []}
-            weaponEquipStates={character.weaponEquipStates || {}}
-            baseAbilities={character.baseAbilities}
-            backgroundBonuses={character.backgroundAbilityBonuses}
-            featBonuses={character.featAbilityBonuses}
+            equippedWeapons={displayCharacter.equippedWeapons || []}
+            weaponEquipStates={displayCharacter.weaponEquipStates || {}}
+            baseAbilities={displayCharacter.baseAbilities}
+            backgroundBonuses={displayCharacter.backgroundAbilityBonuses}
+            featBonuses={displayCharacter.featAbilityBonuses}
             proficiencyBonus={proficiencyBonus}
             characterClass={primaryClass?.className || ''}
             onToggleWeapon={(weaponName, equipped) => {
-              onUpdateCharacter({
+              handleUpdateCharacter({
                 weaponEquipStates: {
-                  ...character.weaponEquipStates,
+                  ...displayCharacter.weaponEquipStates,
                   [weaponName]: equipped,
                 },
               });
             }}
             onAddWeapon={(weaponName) => {
-              const current = character.equippedWeapons || [];
+              const current = displayCharacter.equippedWeapons || [];
               if (!current.includes(weaponName)) {
-                onUpdateCharacter({
+                handleUpdateCharacter({
                   equippedWeapons: [...current, weaponName],
                   weaponEquipStates: {
-                    ...character.weaponEquipStates,
+                    ...displayCharacter.weaponEquipStates,
                     [weaponName]: true,
                   },
                 });
               }
             }}
             onRemoveWeapon={(weaponName) => {
-              const current = character.equippedWeapons || [];
-              const newStates = { ...character.weaponEquipStates };
+              const current = displayCharacter.equippedWeapons || [];
+              const newStates = { ...displayCharacter.weaponEquipStates };
               delete newStates[weaponName];
-              onUpdateCharacter({
+              handleUpdateCharacter({
                 equippedWeapons: current.filter(w => w !== weaponName),
                 weaponEquipStates: newStates,
               });
@@ -279,62 +326,62 @@ export function CharacterSheet({ character, onEdit, onUpdateCharacter, readOnly 
 
           {/* Equipment Section */}
           <EquipmentSection
-            selectedEquipment={character.selectedEquipment || []}
-            customEquipment={character.customEquipment || []}
-            armorEquipStates={character.armorEquipStates || {}}
-            equippedArmor={character.equippedArmor}
-            equippedShield={character.equippedShield}
+            selectedEquipment={displayCharacter.selectedEquipment || []}
+            customEquipment={displayCharacter.customEquipment || []}
+            armorEquipStates={displayCharacter.armorEquipStates || {}}
+            equippedArmor={displayCharacter.equippedArmor}
+            equippedShield={displayCharacter.equippedShield}
             dexModifier={dexMod}
             onAddEquipment={(name, type, description) => {
-              const current = character.selectedEquipment || [];
+              const current = displayCharacter.selectedEquipment || [];
               if (!current.includes(name)) {
                 if (type === 'custom' && description) {
-                  const customItems = character.customEquipment || [];
-                  onUpdateCharacter({
+                  const customItems = displayCharacter.customEquipment || [];
+                  handleUpdateCharacter({
                     selectedEquipment: [...current, name],
                     customEquipment: [...customItems, { name, description, type }],
                   });
                 } else {
-                  onUpdateCharacter({ selectedEquipment: [...current, name] });
+                  handleUpdateCharacter({ selectedEquipment: [...current, name] });
                 }
               }
             }}
             onRemoveEquipment={(name) => {
-              const current = character.selectedEquipment || [];
-              const customItems = character.customEquipment || [];
-              const newArmorStates = { ...character.armorEquipStates };
+              const current = displayCharacter.selectedEquipment || [];
+              const customItems = displayCharacter.customEquipment || [];
+              const newArmorStates = { ...displayCharacter.armorEquipStates };
               delete newArmorStates[name];
               
               // If removing equipped armor, reset armor AC and set it to undefined
-              const isEquippedArmor = character.equippedArmor === name;
-              const isEquippedShield = character.equippedShield === name;
+              const isEquippedArmor = displayCharacter.equippedArmor === name;
+              const isEquippedShield = displayCharacter.equippedShield === name;
               
-              onUpdateCharacter({
+              handleUpdateCharacter({
                 selectedEquipment: current.filter(e => e !== name),
                 customEquipment: customItems.filter(c => c.name !== name),
                 armorEquipStates: newArmorStates,
-                equippedArmor: isEquippedArmor ? undefined : character.equippedArmor,
-                armorAC: isEquippedArmor ? undefined : character.armorAC,
-                equippedShield: isEquippedShield ? undefined : character.equippedShield,
-                shieldAC: isEquippedShield ? undefined : character.shieldAC,
+                equippedArmor: isEquippedArmor ? undefined : displayCharacter.equippedArmor,
+                armorAC: isEquippedArmor ? undefined : displayCharacter.armorAC,
+                equippedShield: isEquippedShield ? undefined : displayCharacter.equippedShield,
+                shieldAC: isEquippedShield ? undefined : displayCharacter.shieldAC,
               });
             }}
             onToggleArmor={(name, equipped) => {
-              onUpdateCharacter({
+              handleUpdateCharacter({
                 armorEquipStates: {
-                  ...character.armorEquipStates,
+                  ...displayCharacter.armorEquipStates,
                   [name]: equipped,
                 },
               });
             }}
             onEquipArmor={(armorName, ac) => {
-              onUpdateCharacter({
+              handleUpdateCharacter({
                 equippedArmor: armorName,
                 armorAC: armorName ? ac : undefined,
               });
             }}
             onEquipShield={(shieldName, ac) => {
-              onUpdateCharacter({
+              handleUpdateCharacter({
                 equippedShield: shieldName,
                 shieldAC: shieldName ? ac : undefined,
               });
@@ -348,8 +395,8 @@ export function CharacterSheet({ character, onEdit, onUpdateCharacter, readOnly 
             <CardContent>
               <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
                 {abilityKeys.map(key => {
-                  const baseValue = character.baseAbilities[key];
-                  const total = getTotalAbilityScore(baseValue, character.backgroundAbilityBonuses[key], character.featAbilityBonuses[key]);
+                  const baseValue = displayCharacter.baseAbilities[key];
+                  const total = getTotalAbilityScore(baseValue, displayCharacter.backgroundAbilityBonuses[key], displayCharacter.featAbilityBonuses[key]);
                   const mod = calculateModifier(total);
                   const saveProficient = classData?.savingThrows.some(s => s.toLowerCase().startsWith(key));
                   return (
@@ -362,11 +409,12 @@ export function CharacterSheet({ character, onEdit, onUpdateCharacter, readOnly 
                           onChange={(e) => {
                             const newAbilities = { ...character.baseAbilities };
                             newAbilities[key] = Math.max(1, Math.min(20, parseInt(e.target.value) || 0));
-                            onUpdateCharacter({ baseAbilities: newAbilities });
+                            handleUpdateCharacter({ baseAbilities: newAbilities });
                           }}
-                          className="text-center text-2xl font-bold p-0 bg-transparent border-0 text-primary h-auto mb-1"
+                          className="text-center text-2xl font-bold p-0 bg-transparent border-0 text-primary h-auto mb-1 focus-visible:ring-0"
                           min="1"
                           max="20"
+                          inputMode="numeric"
                         />
                       ) : (
                         <p className="text-3xl font-bold text-primary">{total}</p>
@@ -388,7 +436,7 @@ export function CharacterSheet({ character, onEdit, onUpdateCharacter, readOnly 
                 {skillsList.map((s) => {
                   const abilityTotal = getTotalAbilityScore(character.baseAbilities[s.ability], character.backgroundAbilityBonuses[s.ability], character.featAbilityBonuses[s.ability]);
                   const mod = calculateModifier(abilityTotal);
-                  const proficient = (character.skills || []).includes(s.name);
+                  const proficient = (displayCharacter.skills || []).includes(s.name);
                   const total = mod + (proficient ? proficiencyBonus : 0);
                   return (
                     <div key={s.name} className="flex items-center justify-between p-2 rounded bg-background/30 border border-border">
@@ -400,11 +448,11 @@ export function CharacterSheet({ character, onEdit, onUpdateCharacter, readOnly 
                         <p className={`text-lg font-semibold ${total >= 0 ? 'text-nature' : 'text-destructive'}`}>{formatModifier(total)}</p>
                         {!effectiveReadOnly ? (
                           <Button size="sm" variant={proficient ? 'default' : 'outline'} onClick={() => {
-                            const current = character.skills || [];
+                            const current = displayCharacter.skills || [];
                             if (proficient) {
-                              onUpdateCharacter({ skills: current.filter(sk => sk !== s.name) });
+                              handleUpdateCharacter({ skills: current.filter(sk => sk !== s.name) });
                             } else {
-                              onUpdateCharacter({ skills: Array.from(new Set([...current, s.name])) });
+                              handleUpdateCharacter({ skills: Array.from(new Set([...current, s.name])) });
                             }
                           }}>Toggle</Button>
                         ) : null}
@@ -421,15 +469,15 @@ export function CharacterSheet({ character, onEdit, onUpdateCharacter, readOnly 
             <SpellManager
               className={primaryClass.className}
               classLevel={primaryClass.level}
-              baseAbilities={character.baseAbilities}
-              backgroundBonuses={character.backgroundAbilityBonuses}
-              featBonuses={character.featAbilityBonuses}
-              spellsKnown={character.spellsKnown || []}
-              preparedSpells={character.preparedSpells || []}
+              baseAbilities={displayCharacter.baseAbilities}
+              backgroundBonuses={displayCharacter.backgroundAbilityBonuses}
+              featBonuses={displayCharacter.featAbilityBonuses}
+              spellsKnown={displayCharacter.spellsKnown || []}
+              preparedSpells={displayCharacter.preparedSpells || []}
               spellSlots={spellSlots}
-              onSpellsKnownChange={(spells) => onUpdateCharacter({ spellsKnown: spells })}
-              onPreparedSpellsChange={(spells) => onUpdateCharacter({ preparedSpells: spells })}
-              onSpellSlotsChange={(slots) => onUpdateCharacter({ spellSlots: slots })}
+              onSpellsKnownChange={(spells) => handleUpdateCharacter({ spellsKnown: spells })}
+              onPreparedSpellsChange={(spells) => handleUpdateCharacter({ preparedSpells: spells })}
+              onSpellSlotsChange={(slots) => handleUpdateCharacter({ spellSlots: slots })}
               readOnly={effectiveReadOnly}
             />
           )}
@@ -440,10 +488,10 @@ export function CharacterSheet({ character, onEdit, onUpdateCharacter, readOnly 
             <CardContent>
               {!effectiveReadOnly ? (
                 <Textarea
-                  value={adventureNotes}
-                  onChange={(e) => onUpdateCharacter({ adventureNotes: e.target.value })}
+                  value={displayCharacter.adventureNotes || ''}
+                  onChange={(e) => handleUpdateCharacter({ adventureNotes: e.target.value })}
                   placeholder="Anote rascunhos, observações sobre a campanha, NPCs importantes..."
-                  className="min-h-[100px] resize-none"
+                  className="min-h-[120px] md:min-h-[100px] resize-none p-4 md:p-3"
                 />
               ) : (
                 <p className="text-muted-foreground whitespace-pre-wrap">{adventureNotes || 'Nenhuma anotação'}</p>
@@ -455,8 +503,8 @@ export function CharacterSheet({ character, onEdit, onUpdateCharacter, readOnly 
           <InventoryCoins
             inventory={inventory}
             coins={coins}
-            onInventoryChange={(inv) => onUpdateCharacter({ inventory: inv })}
-            onCoinsChange={(c) => onUpdateCharacter({ coins: c })}
+            onInventoryChange={(inv) => handleUpdateCharacter({ inventory: inv })}
+            onCoinsChange={(c) => handleUpdateCharacter({ coins: c })}
             readOnly={effectiveReadOnly}
           />
 
@@ -502,7 +550,7 @@ export function CharacterSheet({ character, onEdit, onUpdateCharacter, readOnly 
                       </div>
                     );
                   })}
-                  {(character.feats.length > 0 || bgData?.feat) && (
+                  {(displayCharacter.feats.length > 0 || bgData?.feat) && (
                     <div>
                       <h4 className="font-semibold text-primary mb-2">Feats</h4>
                       <div className="space-y-2">
@@ -511,7 +559,7 @@ export function CharacterSheet({ character, onEdit, onUpdateCharacter, readOnly 
                             <p className="font-medium text-sm">{bgData.feat}</p>
                           </div>
                         )}
-                        {character.feats.map((featName, i) => (
+                        {displayCharacter.feats.map((featName, i) => (
                           <div key={i} className="p-2 rounded bg-muted/30">
                             <p className="font-medium text-sm">{featName}</p>
                             <p className="text-xs text-muted-foreground">{feats[featName]?.description}</p>
@@ -531,9 +579,9 @@ export function CharacterSheet({ character, onEdit, onUpdateCharacter, readOnly 
               <CardContent>
                 {!effectiveReadOnly ? (
                   <Textarea
-                    value={character.backgroundStory || ''}
-                    onChange={(e) => onUpdateCharacter({ backgroundStory: e.target.value })}
-                    className="min-h-[120px] resize-none"
+                  value={displayCharacter.backgroundStory || ''}
+                  onChange={(e) => handleUpdateCharacter({ backgroundStory: e.target.value })}
+                    className="min-h-[150px] md:min-h-[120px] resize-none p-4 md:p-3"
                   />
                 ) : (
                   <p className="text-muted-foreground whitespace-pre-wrap">{character.backgroundStory}</p>

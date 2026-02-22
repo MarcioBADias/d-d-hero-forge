@@ -51,14 +51,18 @@ export function InventoryCoins({
             {coinLabels.map(({ key, label, color }) => (
               <div key={key} className="text-center">
                 <Label className={`text-xs font-bold ${color}`}>{label}</Label>
-                <Input
-                  type="number"
-                  value={coins[key]}
-                  onChange={(e) => handleCoinChange(key, e.target.value)}
-                  disabled={readOnly}
-                  className="text-center text-sm h-8 mt-1"
-                  min={0}
-                />
+                {!readOnly ? (
+                  <Input
+                    type="number"
+                    value={coins[key]}
+                    onChange={(e) => handleCoinChange(key, e.target.value)}
+                    className="text-center text-sm h-8 mt-1"
+                    min={0}
+                    inputMode="numeric"
+                  />
+                ) : (
+                  <p className="text-center text-sm h-8 mt-1 flex items-center justify-center">{coins[key]}</p>
+                )}
               </div>
             ))}
           </div>
@@ -77,13 +81,17 @@ export function InventoryCoins({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <Textarea
-            value={inventory}
-            onChange={(e) => onInventoryChange(e.target.value)}
-            disabled={readOnly}
-            placeholder="Liste seus itens aqui...&#10;- Espada Longa&#10;- Cota de Malha&#10;- Mochila"
-            className="min-h-[120px] resize-none"
-          />
+          {!readOnly ? (
+            <Textarea
+              value={inventory}
+              onChange={(e) => onInventoryChange(e.target.value)}
+              placeholder="Liste seus itens aqui...&#10;- Espada Longa&#10;- Cota de Malha&#10;- Mochila"
+              className="min-h-[150px] md:min-h-[120px] resize-none p-4 md:p-3"
+              autoFocus={false}
+            />
+          ) : (
+            <p className="text-muted-foreground whitespace-pre-wrap text-sm">{inventory || 'Nenhum item no inventário'}</p>
+          )}
         </CardContent>
       </Card>
     </div>

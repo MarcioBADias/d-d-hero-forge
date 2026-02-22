@@ -12,6 +12,8 @@ const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
           className,
         )}
         ref={ref}
+        autoCapitalize={type !== 'number' ? 'sentences' : undefined}
+        spellCheck={type === 'text' || type === 'email' ? true : false}
         {...props}
       />
     );
