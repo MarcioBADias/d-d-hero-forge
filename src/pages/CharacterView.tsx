@@ -44,15 +44,11 @@ export default function CharacterView() {
     
     setIsSaving(true);
     try {
-      // Salva o personagem com as mudanças
-      await saveCharacter.mutateAsync({
-        ...character,
-        ...changes,
-      });
+      const merged = { ...character, ...(editingCharacter || {}), ...changes };
+      await saveCharacter.mutateAsync(merged);
       
-      // Aguarda a refetch das queries completar para garantir que os dados são atualizados
-      // A mutação já invalida a query no onSuccess, mas aguardamos para garantir
-      await new Promise(resolve => setTimeout(resolve, 300));
+      // Wait for refetch
+      await queryClient.invalidateQueries({ queryKey: ['characters', user?.id] });
       
       setEditingCharacter(null);
       toast.success('Personagem atualizado com sucesso!');

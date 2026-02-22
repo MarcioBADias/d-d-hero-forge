@@ -75,7 +75,8 @@ export function useAdventures() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  const { data: adventures = [], isLoading } = useQuery({
+  // Fetch adventures owned by user
+  const { data: ownedAdventures = [], isLoading: ownedLoading } = useQuery({
     queryKey: ['adventures', user?.id],
     queryFn: async () => {
       if (!user) return [];
@@ -90,6 +91,49 @@ export function useAdventures() {
     enabled: !!user,
   });
 
+  // Fetch adventures where user has characters participating
+  const { data: participatingAdventures = [], isLoading: partLoading } = useQuery({
+    queryKey: ['participating-adventures', user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      // Get character IDs for this user
+      const { data: chars, error: charErr } = await supabase
+        .from('characters')
+        .select('id')
+        .eq('user_id', user.id);
+      if (charErr) throw charErr;
+      if (!chars || chars.length === 0) return [];
+      
+      const charIds = chars.map(c => c.id);
+      
+      // Get adventure_characters links for these characters
+      const { data: links, error: linkErr } = await supabase
+        .from('adventure_characters')
+        .select('adventure_id')
+        .in('character_id', charIds);
+      if (linkErr) throw linkErr;
+      if (!links || links.length === 0) return [];
+      
+      const adventureIds = [...new Set(links.map(l => l.adventure_id))];
+      
+      // Filter out owned adventures
+      const nonOwnedIds = adventureIds.filter(aid => !ownedAdventures.some(a => a.id === aid));
+      if (nonOwnedIds.length === 0) return [];
+      
+      const { data: advs, error: advErr } = await supabase
+        .from('adventures')
+        .select('*')
+        .in('id', nonOwnedIds)
+        .order('updated_at', { ascending: false });
+      if (advErr) throw advErr;
+      return (advs || []) as Adventure[];
+    },
+    enabled: !!user && !ownedLoading,
+  });
+
+  const adventures = [...ownedAdventures, ...participatingAdventures];
+  const isLoading = ownedLoading || partLoading;
+
   const createAdventure = useMutation({
     mutationFn: async ({ title, password }: { title: string; password: string }) => {
       if (!user) throw new Error('Login necessário');
@@ -103,6 +147,7 @@ export function useAdventures() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['adventures', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['participating-adventures', user?.id] });
       toast.success('Aventura criada!');
     },
     onError: (e: Error) => toast.error(e.message),

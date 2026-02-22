@@ -39,6 +39,8 @@ export function CharacterSheet({ character, onEdit, onUpdateCharacter, onSaveCha
 
   const hasPendingChanges = Object.keys(pendingChanges).length > 0;
   const effectiveReadOnly = readOnly || !isEditable;
+  // HP is always editable for the character owner (not read-only viewers)
+  const hpAlwaysEditable = !readOnly;
 
   // Merge character with pending changes for display
   const displayCharacter = { ...character, ...pendingChanges } as Character;
@@ -46,6 +48,15 @@ export function CharacterSheet({ character, onEdit, onUpdateCharacter, onSaveCha
   const handleUpdateCharacter = (updates: Partial<Character>) => {
     setPendingChanges(prev => ({ ...prev, ...updates }));
     onUpdateCharacter(updates);
+  };
+
+  // Auto-save HP/death saves changes immediately (without needing edit mode)
+  const handleHpUpdate = (updates: Partial<Character>) => {
+    onUpdateCharacter(updates);
+    // Auto-save HP changes if onSaveChanges is available
+    if (onSaveChanges) {
+      onSaveChanges(updates);
+    }
   };
 
   const handleSaveChanges = async () => {
@@ -272,15 +283,15 @@ export function CharacterSheet({ character, onEdit, onUpdateCharacter, onSaveCha
             </CardContent>
           </Card>
 
-          {/* HP Tracker */}
+          {/* HP Tracker - always editable for owner */}
           <HpTracker
             maxHp={maxHp}
             currentHp={currentHp}
             tempHp={tempHp}
             deathSaves={deathSaves}
-            onHpChange={(hp, temp) => handleUpdateCharacter({ currentHp: hp, tempHp: temp })}
-            onDeathSavesChange={(saves) => handleUpdateCharacter({ deathSaves: saves })}
-            readOnly={effectiveReadOnly}
+            onHpChange={(hp, temp) => handleHpUpdate({ currentHp: hp, tempHp: temp })}
+            onDeathSavesChange={(saves) => handleHpUpdate({ deathSaves: saves })}
+            readOnly={!hpAlwaysEditable}
           />
 
           {/* Attack Section */}
