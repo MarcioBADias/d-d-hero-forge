@@ -149,6 +149,7 @@ export type Database = {
       }
       characters: {
         Row: {
+          ability_trackers: Json | null
           adventure_notes: string | null
           armor_ac: number | null
           armor_equip_states: Json | null
@@ -161,6 +162,7 @@ export type Database = {
           coins: Json | null
           created_at: string
           current_hp: number | null
+          custom_attacks: Json | null
           custom_equipment: Json | null
           death_saves: Json | null
           equipped_armor: string | null
@@ -190,6 +192,7 @@ export type Database = {
           weapon_equip_states: Json | null
         }
         Insert: {
+          ability_trackers?: Json | null
           adventure_notes?: string | null
           armor_ac?: number | null
           armor_equip_states?: Json | null
@@ -202,6 +205,7 @@ export type Database = {
           coins?: Json | null
           created_at?: string
           current_hp?: number | null
+          custom_attacks?: Json | null
           custom_equipment?: Json | null
           death_saves?: Json | null
           equipped_armor?: string | null
@@ -231,6 +235,7 @@ export type Database = {
           weapon_equip_states?: Json | null
         }
         Update: {
+          ability_trackers?: Json | null
           adventure_notes?: string | null
           armor_ac?: number | null
           armor_equip_states?: Json | null
@@ -243,6 +248,7 @@ export type Database = {
           coins?: Json | null
           created_at?: string
           current_hp?: number | null
+          custom_attacks?: Json | null
           custom_equipment?: Json | null
           death_saves?: Json | null
           equipped_armor?: string | null

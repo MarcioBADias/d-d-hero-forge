@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Character, AbilityBonuses, AbilityScores, Coins, DeathSaves, SpellSlotState } from '@/types/character';
+import { Character, AbilityBonuses, AbilityScores, Coins, DeathSaves, SpellSlotState, AbilityTracker, CustomAttack } from '@/types/character';
 import { toast } from 'sonner';
 import { Json } from '@/integrations/supabase/types';
 
@@ -134,6 +134,38 @@ function parseFeatSelections(json: Json | null): Record<string, any> | undefined
   return json as Record<string, any>;
 }
 
+function parseAbilityTrackers(json: Json | null): AbilityTracker[] {
+  if (!json || !Array.isArray(json)) return [];
+  return json.map((item) => {
+    if (typeof item === 'object' && item !== null && !Array.isArray(item)) {
+      const obj = item as Record<string, Json | undefined>;
+      return {
+        name: typeof obj.name === 'string' ? obj.name : '',
+        maxUses: typeof obj.maxUses === 'number' ? obj.maxUses : 1,
+        usedUses: typeof obj.usedUses === 'number' ? obj.usedUses : 0,
+      };
+    }
+    return { name: '', maxUses: 1, usedUses: 0 };
+  });
+}
+
+function parseCustomAttacks(json: Json | null): CustomAttack[] {
+  if (!json || !Array.isArray(json)) return [];
+  return json.map((item) => {
+    if (typeof item === 'object' && item !== null && !Array.isArray(item)) {
+      const obj = item as Record<string, Json | undefined>;
+      return {
+        name: typeof obj.name === 'string' ? obj.name : '',
+        attackBonus: typeof obj.attackBonus === 'number' ? obj.attackBonus : 0,
+        damage: typeof obj.damage === 'string' ? obj.damage : '',
+        damageType: typeof obj.damageType === 'string' ? obj.damageType : '',
+        notes: typeof obj.notes === 'string' ? obj.notes : undefined,
+      };
+    }
+    return { name: '', attackBonus: 0, damage: '', damageType: '' };
+  });
+}
+
 function dbToCharacter(db: any): Character {
   return {
     id: db.id,
@@ -170,6 +202,8 @@ function dbToCharacter(db: any): Character {
     inventory: db.inventory || '',
     coins: parseCoins(db.coins),
     adventureNotes: db.adventure_notes || '',
+    abilityTrackers: parseAbilityTrackers(db.ability_trackers),
+    customAttacks: parseCustomAttacks(db.custom_attacks),
     createdAt: new Date(db.created_at),
     updatedAt: new Date(db.updated_at),
     userId: db.user_id || undefined,
@@ -213,6 +247,8 @@ function characterToDb(char: Partial<Character>, userId?: string) {
     inventory: char.inventory || '',
     coins: (char.coins || { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 }) as unknown as Json,
     adventure_notes: char.adventureNotes || '',
+    ability_trackers: (char.abilityTrackers || []) as unknown as Json,
+    custom_attacks: (char.customAttacks || []) as unknown as Json,
     is_public: char.isPublic || false,
   };
 }

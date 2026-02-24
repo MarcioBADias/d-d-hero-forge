@@ -248,10 +248,9 @@ export function SpellManager({
                       {Array.from({ length: maxSlot }, (_, i) => (
                         <button
                           key={i}
-                          onClick={() => !readOnly && toggleSlotUsed(level)}
-                          disabled={readOnly}
+                          onClick={() => toggleSlotUsed(level)}
                           className={cn(
-                            "w-6 h-6 rounded border-2 transition-all",
+                            "w-6 h-6 rounded border-2 transition-all cursor-pointer",
                             i < current.used
                               ? "bg-primary/50 border-primary"
                               : "border-primary/30 hover:border-primary"
