@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Character, abilityShortLabels, calculateModifier, formatModifier, getTotalAbilityScore, calculateProficiencyBonus, AbilityScore, DeathSaves, Coins, SpellSlotState } from '@/types/character';
+import { Character, abilityShortLabels, calculateModifier, formatModifier, getTotalAbilityScore, calculateProficiencyBonus, AbilityScore, DeathSaves, Coins, SpellSlotState, AbilityTracker, CustomAttack } from '@/types/character';
 import { characterClasses } from '@/data/classes';
 import { races } from '@/data/races';
 import { backgrounds } from '@/data/backgrounds';
@@ -18,6 +18,7 @@ import { InventoryCoins } from './InventoryCoins';
 import { SpellManager } from './SpellManager';
 import { AttackSection } from './AttackSection';
 import { EquipmentSection } from './EquipmentSection';
+import { AbilityTrackerSection } from './AbilityTrackerSection';
 import { ArrowUp, Edit, Shield, Footprints, Star, Sword, Sparkles, User, Wrench, BookOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -303,6 +304,7 @@ export function CharacterSheet({ character, onEdit, onUpdateCharacter, onSaveCha
             featBonuses={displayCharacter.featAbilityBonuses}
             proficiencyBonus={proficiencyBonus}
             characterClass={primaryClass?.className || ''}
+            customAttacks={displayCharacter.customAttacks || []}
             onToggleWeapon={(weaponName, equipped) => {
               handleUpdateCharacter({
                 weaponEquipStates: {
@@ -332,6 +334,7 @@ export function CharacterSheet({ character, onEdit, onUpdateCharacter, onSaveCha
                 weaponEquipStates: newStates,
               });
             }}
+            onCustomAttacksChange={(attacks) => handleUpdateCharacter({ customAttacks: attacks })}
             readOnly={effectiveReadOnly}
           />
 
@@ -488,7 +491,7 @@ export function CharacterSheet({ character, onEdit, onUpdateCharacter, onSaveCha
               spellSlots={spellSlots}
               onSpellsKnownChange={(spells) => handleUpdateCharacter({ spellsKnown: spells })}
               onPreparedSpellsChange={(spells) => handleUpdateCharacter({ preparedSpells: spells })}
-              onSpellSlotsChange={(slots) => handleUpdateCharacter({ spellSlots: slots })}
+              onSpellSlotsChange={(slots) => handleHpUpdate({ spellSlots: slots })}
               readOnly={effectiveReadOnly}
             />
           )}
@@ -581,6 +584,14 @@ export function CharacterSheet({ character, onEdit, onUpdateCharacter, onSaveCha
                   )}
                 </div>
               </ScrollArea>
+              
+              {/* Ability Trackers */}
+              <AbilityTrackerSection
+                trackers={displayCharacter.abilityTrackers || []}
+                onChange={(trackers) => handleHpUpdate({ abilityTrackers: trackers })}
+                readOnly={readOnly}
+                editMode={!effectiveReadOnly}
+              />
             </CardContent>
           </Card>
 

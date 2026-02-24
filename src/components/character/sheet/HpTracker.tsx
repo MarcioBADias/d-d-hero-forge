@@ -31,19 +31,15 @@ export function HpTracker({
   const [tempInput, setTempInput] = useState('');
 
   const hpPercentage = Math.max(0, (currentHp / maxHp) * 100);
-  const isDying = currentHp <= 0 && deathSaves.failures < 3;
   const isDead = deathSaves.failures >= 3;
-  const isStabilized = currentHp === 0 && deathSaves.successes >= 3;
+  const isStabilized = deathSaves.successes >= 3;
 
   const applyDamage = () => {
     const damage = parseInt(damageInput) || 0;
     if (damage <= 0) return;
-
     let remainingDamage = damage;
     let newTempHp = tempHp;
     let newCurrentHp = currentHp;
-
-    // First, reduce temp HP
     if (newTempHp > 0) {
       if (remainingDamage >= newTempHp) {
         remainingDamage -= newTempHp;
@@ -53,10 +49,7 @@ export function HpTracker({
         remainingDamage = 0;
       }
     }
-
-    // Then, reduce current HP
     newCurrentHp = Math.max(0, newCurrentHp - remainingDamage);
-
     onHpChange(newCurrentHp, newTempHp);
     setDamageInput('');
   };
@@ -64,32 +57,25 @@ export function HpTracker({
   const applyHeal = () => {
     const heal = parseInt(healInput) || 0;
     if (heal <= 0) return;
-
     const newHp = Math.min(maxHp, currentHp + heal);
     onHpChange(newHp, tempHp);
-    
-    // Reset death saves if healed from 0
     if (currentHp === 0 && newHp > 0) {
       onDeathSavesChange({ successes: 0, failures: 0 });
     }
-    
     setHealInput('');
   };
 
   const addTempHp = () => {
     const temp = parseInt(tempInput) || 0;
     if (temp <= 0) return;
-    // Temp HP doesn't stack, take the higher value
     onHpChange(currentHp, Math.max(tempHp, temp));
     setTempInput('');
   };
 
   const toggleDeathSave = (type: 'successes' | 'failures', index: number) => {
-    if (readOnly || currentHp > 0) return;
-    
+    if (readOnly) return;
     const currentValue = deathSaves[type];
     const newValue = index < currentValue ? index : index + 1;
-    
     onDeathSavesChange({
       ...deathSaves,
       [type]: Math.min(3, newValue),
@@ -103,7 +89,6 @@ export function HpTracker({
   return (
     <Card className={cn(
       "parchment transition-all duration-500",
-      isDying && !isDead && "border-destructive/50 bg-destructive/10",
       isDead && "grayscale border-muted",
       isStabilized && "border-primary/50"
     )}>
@@ -153,8 +138,8 @@ export function HpTracker({
           />
         </div>
 
-        {/* HP Controls */}
-        {currentHp > 0 && (
+        {/* HP Controls - always visible for non-readOnly */}
+        {!readOnly && (
           <div className="grid grid-cols-3 gap-2">
             <div className="flex gap-1">
               <Input
@@ -195,79 +180,75 @@ export function HpTracker({
           </div>
         )}
 
-        {/* Death Saves - Only show when at 0 HP */}
-        {currentHp <= 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="p-4 rounded-lg bg-muted/50 border border-border"
-          >
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <Skull className="w-5 h-5 text-destructive" />
-                <span className="font-semibold">Testes de Morte</span>
-              </div>
-              {!readOnly && (
-                <Button size="sm" variant="ghost" onClick={resetDeathSaves}>
-                  <RotateCcw className="w-4 h-4" />
-                </Button>
-              )}
+        {/* Death Saves - Always visible */}
+        <div className="p-4 rounded-lg bg-muted/50 border border-border">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Skull className="w-5 h-5 text-destructive" />
+              <span className="font-semibold">Testes de Morte</span>
             </div>
+            {!readOnly && (
+              <Button size="sm" variant="ghost" onClick={resetDeathSaves}>
+                <RotateCcw className="w-4 h-4" />
+              </Button>
+            )}
+          </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              {/* Successes */}
-              <div>
-                <p className="text-sm text-nature mb-2">Sucessos</p>
-                <div className="flex gap-2">
-                  {[0, 1, 2].map((i) => (
-                    <button
-                      key={`success-${i}`}
-                      onClick={() => toggleDeathSave('successes', i)}
-                      disabled={readOnly}
-                      className={cn(
-                        "w-8 h-8 rounded-full border-2 transition-all",
-                        i < deathSaves.successes
-                          ? "bg-nature border-nature"
-                          : "border-nature/50 hover:border-nature"
-                      )}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              {/* Failures */}
-              <div>
-                <p className="text-sm text-destructive mb-2">Falhas</p>
-                <div className="flex gap-2">
-                  {[0, 1, 2].map((i) => (
-                    <button
-                      key={`failure-${i}`}
-                      onClick={() => toggleDeathSave('failures', i)}
-                      disabled={readOnly}
-                      className={cn(
-                        "w-8 h-8 rounded-full border-2 transition-all",
-                        i < deathSaves.failures
-                          ? "bg-destructive border-destructive"
-                          : "border-destructive/50 hover:border-destructive"
-                      )}
-                    />
-                  ))}
-                </div>
+          <div className="grid grid-cols-2 gap-4">
+            {/* Successes */}
+            <div>
+              <p className="text-sm text-nature mb-2">Sucessos</p>
+              <div className="flex gap-2">
+                {[0, 1, 2].map((i) => (
+                  <button
+                    key={`success-${i}`}
+                    onClick={() => toggleDeathSave('successes', i)}
+                    disabled={readOnly}
+                    className={cn(
+                      "w-8 h-8 rounded-full border-2 transition-all",
+                      i < deathSaves.successes
+                        ? "bg-nature border-nature"
+                        : "border-nature/50 hover:border-nature",
+                      !readOnly && "cursor-pointer"
+                    )}
+                  />
+                ))}
               </div>
             </div>
 
-            {isDead && (
-              <p className="text-center text-destructive font-bold mt-4">
-                ☠️ MORTO ☠️
-              </p>
-            )}
-            {isStabilized && (
-              <p className="text-center text-primary font-bold mt-4">
-                💫 Estabilizado
-              </p>
-            )}
-          </motion.div>
-        )}
+            {/* Failures */}
+            <div>
+              <p className="text-sm text-destructive mb-2">Falhas</p>
+              <div className="flex gap-2">
+                {[0, 1, 2].map((i) => (
+                  <button
+                    key={`failure-${i}`}
+                    onClick={() => toggleDeathSave('failures', i)}
+                    disabled={readOnly}
+                    className={cn(
+                      "w-8 h-8 rounded-full border-2 transition-all",
+                      i < deathSaves.failures
+                        ? "bg-destructive border-destructive"
+                        : "border-destructive/50 hover:border-destructive",
+                      !readOnly && "cursor-pointer"
+                    )}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {isDead && (
+            <p className="text-center text-destructive font-bold mt-4">
+              ☠️ MORTO ☠️
+            </p>
+          )}
+          {isStabilized && (
+            <p className="text-center text-primary font-bold mt-4">
+              💫 Estabilizado
+            </p>
+          )}
+        </div>
       </CardContent>
     </Card>
   );

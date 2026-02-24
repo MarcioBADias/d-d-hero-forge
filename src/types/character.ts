@@ -108,6 +108,26 @@ export interface Character {
   
   // Skills (list of skill names the character is proficient in)
   skills?: string[];
+  
+  // Ability trackers (custom ability usage counters)
+  abilityTrackers?: AbilityTracker[];
+  
+  // Custom attacks
+  customAttacks?: CustomAttack[];
+}
+
+export interface AbilityTracker {
+  name: string;
+  maxUses: number;
+  usedUses: number;
+}
+
+export interface CustomAttack {
+  name: string;
+  attackBonus: number;
+  damage: string;
+  damageType: string;
+  notes?: string;
 }
 
 export interface CharacterCreationState {
@@ -195,6 +215,8 @@ export function createEmptyCharacter(): Partial<Character> {
     adventureNotes: '',
     coins: { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 },
     skills: [],
+    abilityTrackers: [],
+    customAttacks: [],
   };
 }
 
