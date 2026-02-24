@@ -52,7 +52,7 @@ export function AbilityTrackerSection({ trackers, onChange, readOnly = false, ed
   return (
     <div className="space-y-3 mt-4">
       <div className="flex items-center justify-between">
-        <h4 className="font-semibold text-primary text-sm">Contadores de Habilidade</h4>
+        <h4 className="font-semibold text-primary text-sm">Marcadores de Habilidade</h4>
         {editMode && (
           <Button size="sm" variant="outline" className="gap-1" onClick={() => setShowAdd(true)}>
             <Plus className="w-4 h-4" />

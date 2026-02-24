@@ -111,7 +111,7 @@ export function HpTracker({
             )}>
               {currentHp}
             </div>
-            <div className="text-muted-foreground text-sm">/ {maxHp}</div>
+            <div className="text-muted-foreground text-sm"></div>
           </div>
           
           {tempHp > 0 && (
