@@ -6,8 +6,11 @@ import { characterClasses, classNames } from '@/data/classes';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Sword, Heart, Sparkles, Shield } from 'lucide-react';
+import { Plus, Trash2, Sword, Heart, Sparkles, Shield, Printer } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { getClassCards, getClassCardsForLevel } from '@/data/classCards';
+import { printClassCardsToPdf } from '@/utils/classCardsPdf';
+import { toast } from 'sonner';
 
 interface StepClassProps {
   character: Partial<Character>;
@@ -213,25 +216,77 @@ export function StepClass({ character, updateCharacter }: StepClassProps) {
                         Ver Habilidades até Nível {classLevel.level}
                       </AccordionTrigger>
                       <AccordionContent>
-                        <ScrollArea className="h-48">
-                          <div className="space-y-2 pr-4">
-                            {classData.features
-                              .filter((f) => f.level <= classLevel.level)
-                              .map((feature, idx) => (
-                                <div key={idx} className="p-2 rounded bg-muted/30">
-                                  <div className="flex items-center gap-2">
-                                    <Badge variant="outline" className="text-xs">
-                                      Nv. {feature.level}
-                                    </Badge>
-                                    <span className="font-semibold text-sm">{feature.title}</span>
-                                  </div>
-                                  <p className="text-xs text-muted-foreground mt-1">
-                                    {feature.description}
-                                  </p>
+                        {(() => {
+                          const cards = getClassCardsForLevel(classLevel.className, classLevel.level);
+                          if (cards.length === 0) {
+                            return (
+                              <ScrollArea className="h-48">
+                                <div className="space-y-2 pr-4">
+                                  {classData.features
+                                    .filter((f) => f.level <= classLevel.level)
+                                    .map((feature, idx) => (
+                                      <div key={idx} className="p-2 rounded bg-muted/30">
+                                        <div className="flex items-center gap-2">
+                                          <Badge variant="outline" className="text-xs">
+                                            Nv. {feature.level}
+                                          </Badge>
+                                          <span className="font-semibold text-sm">{feature.title}</span>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                          {feature.description}
+                                        </p>
+                                      </div>
+                                    ))}
                                 </div>
-                              ))}
-                          </div>
-                        </ScrollArea>
+                              </ScrollArea>
+                            );
+                          }
+                          return (
+                            <div className="space-y-3">
+                              <div className="flex justify-end">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="gap-2"
+                                  onClick={async () => {
+                                    const all = getClassCards(classLevel.className);
+                                    try {
+                                      await printClassCardsToPdf(
+                                        all,
+                                        `${classLevel.className.toLowerCase()}_cards.pdf`
+                                      );
+                                      toast.success('PDF de cards gerado!');
+                                    } catch (e) {
+                                      console.error(e);
+                                      toast.error('Erro ao gerar PDF');
+                                    }
+                                  }}
+                                >
+                                  <Printer className="w-4 h-4" />
+                                  Imprimir Cards (A4, 3x3)
+                                </Button>
+                              </div>
+                              <ScrollArea className="h-96">
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 pr-4">
+                                  {cards.map((card) => (
+                                    <div
+                                      key={card.id}
+                                      className="rounded-lg overflow-hidden border border-border bg-background/40 hover:border-primary transition-colors"
+                                      title={card.label}
+                                    >
+                                      <img
+                                        src={card.url}
+                                        alt={card.label}
+                                        loading="lazy"
+                                        className="w-full h-auto block"
+                                      />
+                                    </div>
+                                  ))}
+                                </div>
+                              </ScrollArea>
+                            </div>
+                          );
+                        })()}
                       </AccordionContent>
                     </AccordionItem>
                   </Accordion>
