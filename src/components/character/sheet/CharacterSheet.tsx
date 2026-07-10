@@ -21,6 +21,10 @@ import { EquipmentSection } from './EquipmentSection';
 import { AbilityTrackerSection } from './AbilityTrackerSection';
 import { ArrowUp, Edit, Shield, Footprints, Star, Sword, Sparkles, User, Wrench, BookOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { getClassCards, getClassCardsForLevel } from '@/data/classCards';
+import { printClassCardsToPdf } from '@/utils/classCardsPdf';
+import { Printer } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface CharacterSheetProps {
   character: Character;
@@ -37,6 +41,7 @@ export function CharacterSheet({ character, onEdit, onUpdateCharacter, onSaveCha
   const [isEditable, setIsEditable] = useState(false);
   const [pendingChanges, setPendingChanges] = useState<Partial<Character>>({});
   const [isSaving, setIsSaving] = useState(false);
+  const [expandedCard, setExpandedCard] = useState<{ url: string; label: string } | null>(null);
 
   const hasPendingChanges = Object.keys(pendingChanges).length > 0;
   const effectiveReadOnly = readOnly || !isEditable;
@@ -547,6 +552,49 @@ export function CharacterSheet({ character, onEdit, onUpdateCharacter, onSaveCha
                   {character.classes.map((cl, idx) => {
                     const clData = characterClasses[cl.className.toLowerCase()];
                     if (!clData) return null;
+                    const cards = getClassCardsForLevel(cl.className, cl.level);
+                    if (cards.length > 0) {
+                      return (
+                        <div key={idx}>
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="font-semibold text-primary">{clData.name} Features</h4>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="gap-2 h-7 text-xs"
+                              onClick={async () => {
+                                try {
+                                  await printClassCardsToPdf(
+                                    getClassCards(cl.className),
+                                    `${cl.className.toLowerCase()}_cards.pdf`
+                                  );
+                                  toast.success('PDF de cards gerado!');
+                                } catch (e) {
+                                  console.error(e);
+                                  toast.error('Erro ao gerar PDF');
+                                }
+                              }}
+                            >
+                              <Printer className="w-3 h-3" />
+                              Imprimir Cards
+                            </Button>
+                          </div>
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                            {cards.map((card) => (
+                              <button
+                                key={card.id}
+                                type="button"
+                                onClick={() => setExpandedCard({ url: card.url, label: card.label })}
+                                className="rounded-lg overflow-hidden border border-border bg-background/40 hover:border-primary transition-colors cursor-zoom-in"
+                                title={card.label}
+                              >
+                                <img src={card.url} alt={card.label} loading="lazy" className="w-full h-auto block" />
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    }
                     return (
                       <div key={idx}>
                         <h4 className="font-semibold text-primary mb-2">{clData.name} Features</h4>
@@ -613,6 +661,16 @@ export function CharacterSheet({ character, onEdit, onUpdateCharacter, onSaveCha
           )}
         </div>
       </div>
+      <Dialog open={!!expandedCard} onOpenChange={(open) => !open && setExpandedCard(null)}>
+        <DialogContent className="max-w-3xl p-2 bg-background">
+          <DialogHeader>
+            <DialogTitle className="font-cinzel text-primary text-sm px-2">{expandedCard?.label}</DialogTitle>
+          </DialogHeader>
+          {expandedCard && (
+            <img src={expandedCard.url} alt={expandedCard.label} className="w-full h-auto rounded" />
+          )}
+        </DialogContent>
+      </Dialog>
     </motion.div>
   );
 }
