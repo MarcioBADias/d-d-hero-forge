@@ -552,6 +552,49 @@ export function CharacterSheet({ character, onEdit, onUpdateCharacter, onSaveCha
                   {character.classes.map((cl, idx) => {
                     const clData = characterClasses[cl.className.toLowerCase()];
                     if (!clData) return null;
+                    const cards = getClassCardsForLevel(cl.className, cl.level);
+                    if (cards.length > 0) {
+                      return (
+                        <div key={idx}>
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="font-semibold text-primary">{clData.name} Features</h4>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="gap-2 h-7 text-xs"
+                              onClick={async () => {
+                                try {
+                                  await printClassCardsToPdf(
+                                    getClassCards(cl.className),
+                                    `${cl.className.toLowerCase()}_cards.pdf`
+                                  );
+                                  toast.success('PDF de cards gerado!');
+                                } catch (e) {
+                                  console.error(e);
+                                  toast.error('Erro ao gerar PDF');
+                                }
+                              }}
+                            >
+                              <Printer className="w-3 h-3" />
+                              Imprimir Cards
+                            </Button>
+                          </div>
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                            {cards.map((card) => (
+                              <button
+                                key={card.id}
+                                type="button"
+                                onClick={() => setExpandedCard({ url: card.url, label: card.label })}
+                                className="rounded-lg overflow-hidden border border-border bg-background/40 hover:border-primary transition-colors cursor-zoom-in"
+                                title={card.label}
+                              >
+                                <img src={card.url} alt={card.label} loading="lazy" className="w-full h-auto block" />
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    }
                     return (
                       <div key={idx}>
                         <h4 className="font-semibold text-primary mb-2">{clData.name} Features</h4>
