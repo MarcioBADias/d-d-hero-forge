@@ -21,6 +21,10 @@ import { EquipmentSection } from './EquipmentSection';
 import { AbilityTrackerSection } from './AbilityTrackerSection';
 import { ArrowUp, Edit, Shield, Footprints, Star, Sword, Sparkles, User, Wrench, BookOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { getClassCards, getClassCardsForLevel } from '@/data/classCards';
+import { printClassCardsToPdf } from '@/utils/classCardsPdf';
+import { Printer } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface CharacterSheetProps {
   character: Character;
@@ -37,6 +41,7 @@ export function CharacterSheet({ character, onEdit, onUpdateCharacter, onSaveCha
   const [isEditable, setIsEditable] = useState(false);
   const [pendingChanges, setPendingChanges] = useState<Partial<Character>>({});
   const [isSaving, setIsSaving] = useState(false);
+  const [expandedCard, setExpandedCard] = useState<{ url: string; label: string } | null>(null);
 
   const hasPendingChanges = Object.keys(pendingChanges).length > 0;
   const effectiveReadOnly = readOnly || !isEditable;
