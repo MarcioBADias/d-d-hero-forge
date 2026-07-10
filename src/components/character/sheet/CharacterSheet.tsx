@@ -661,6 +661,16 @@ export function CharacterSheet({ character, onEdit, onUpdateCharacter, onSaveCha
           )}
         </div>
       </div>
+      <Dialog open={!!expandedCard} onOpenChange={(open) => !open && setExpandedCard(null)}>
+        <DialogContent className="max-w-3xl p-2 bg-background">
+          <DialogHeader>
+            <DialogTitle className="font-cinzel text-primary text-sm px-2">{expandedCard?.label}</DialogTitle>
+          </DialogHeader>
+          {expandedCard && (
+            <img src={expandedCard.url} alt={expandedCard.label} className="w-full h-auto rounded" />
+          )}
+        </DialogContent>
+      </Dialog>
     </motion.div>
   );
 }
