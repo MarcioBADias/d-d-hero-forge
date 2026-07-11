@@ -564,10 +564,12 @@ export function CharacterSheet({ character, onEdit, onUpdateCharacter, onSaveCha
                               className="gap-2 h-7 text-xs"
                               onClick={async () => {
                                 try {
-                                  await printClassCardsToPdf(
-                                    getClassCards(cl.className),
-                                    `${cl.className.toLowerCase()}_cards.pdf`
-                                  );
+                                   const { getClassBackUrl } = await import('@/data/classCards');
+                                   await printClassCardsToPdf(
+                                     getClassCards(cl.className),
+                                     `${cl.className.toLowerCase()}_cards.pdf`,
+                                     getClassBackUrl(cl.className),
+                                   );
                                   toast.success('PDF de cards gerado!');
                                 } catch (e) {
                                   console.error(e);
