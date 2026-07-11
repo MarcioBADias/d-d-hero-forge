@@ -12,13 +12,16 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Footer } from '@/components/layout/Footer';
 import { 
   Search, Sword, Sparkles, Users, BookOpen, ArrowLeft,
-  Star, Shield, Heart, Zap, Wand2, ChevronDown, Clock, Target
+  Star, Shield, Heart, Zap, Wand2, ChevronDown, Clock, Target, Printer
 } from 'lucide-react';
 import { characterClasses, CharacterClassData } from '@/data/classes';
 import { races, Race } from '@/data/races';
 import { backgrounds, Background } from '@/data/backgrounds';
 import { feats, Feat } from '@/data/feats';
 import { srdSpells, SRDSpell } from '@/data/srdSpells';
+import { getClassCards, getClassBackUrl } from '@/data/classCards';
+import { printClassCardsToPdf } from '@/utils/classCardsPdf';
+import { toast } from 'sonner';
 
 type TabType = 'classes' | 'races' | 'backgrounds' | 'feats' | 'spells';
 
@@ -390,6 +393,32 @@ export default function Compendium() {
           <ScrollArea className="max-h-[60vh] pr-4">
             {selectedClass && (
               <div className="space-y-4">
+                {getClassCards(selectedClass.name).length > 0 && (
+                  <div className="flex justify-end">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-2"
+                      onClick={async () => {
+                        const all = getClassCards(selectedClass.name);
+                        try {
+                          await printClassCardsToPdf(
+                            all,
+                            `${selectedClass.name.toLowerCase()}_cards.pdf`,
+                            getClassBackUrl(selectedClass.name),
+                          );
+                          toast.success('PDF de cards gerado!');
+                        } catch (e) {
+                          console.error(e);
+                          toast.error('Erro ao gerar PDF');
+                        }
+                      }}
+                    >
+                      <Printer className="w-4 h-4" />
+                      Imprimir Cards (A4, 3x3, frente e verso)
+                    </Button>
+                  </div>
+                )}
                 <div className="flex flex-wrap gap-2">
                   <Badge className="bg-blood/20 text-blood border-blood/30">
                     <Heart className="w-3 h-3 mr-1" />Hit Die: d{selectedClass.hitDie}

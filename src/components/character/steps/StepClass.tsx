@@ -8,7 +8,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Plus, Trash2, Sword, Heart, Sparkles, Shield, Printer } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { getClassCards, getClassCardsForLevel } from '@/data/classCards';
+import { getClassCards, getClassCardsForLevel, getClassBackUrl } from '@/data/classCards';
 import { printClassCardsToPdf } from '@/utils/classCardsPdf';
 import { toast } from 'sonner';
 
@@ -253,7 +253,8 @@ export function StepClass({ character, updateCharacter }: StepClassProps) {
                                     try {
                                       await printClassCardsToPdf(
                                         all,
-                                        `${classLevel.className.toLowerCase()}_cards.pdf`
+                                        `${classLevel.className.toLowerCase()}_cards.pdf`,
+                                        getClassBackUrl(classLevel.className),
                                       );
                                       toast.success('PDF de cards gerado!');
                                     } catch (e) {
