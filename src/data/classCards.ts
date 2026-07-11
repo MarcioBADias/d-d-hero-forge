@@ -53,3 +53,14 @@ export function getClassCardsForLevel(className: string, level: number): ClassCa
     (c) => c.type !== 'feature' || (c.level ?? 0) <= level
   );
 }
+
+const classFolders: Record<string, string> = {
+  bard: '01_Bard',
+};
+
+export function getClassBackUrl(className: string): string | null {
+  const key = className.toLowerCase();
+  const folder = classFolders[key];
+  if (!folder) return null;
+  return `/classCards/${folder}/${key}_back.png`;
+}

@@ -19,7 +19,11 @@ async function loadImageDataUrl(url: string): Promise<{ dataUrl: string; w: numb
   });
 }
 
-export async function printClassCardsToPdf(cards: ClassCard[], filename = 'class_cards.pdf') {
+export async function printClassCardsToPdf(
+  cards: ClassCard[],
+  filename = 'class_cards.pdf',
+  backUrl?: string | null,
+) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
   const pageW = 210;
   const pageH = 297;
@@ -32,27 +36,63 @@ export async function printClassCardsToPdf(cards: ClassCard[], filename = 'class
   const cellW = (pageW - marginX * 2 - gap * (cols - 1)) / cols;
   const cellH = (pageH - marginY * 2 - gap * (rows - 1)) / rows;
 
-  for (let i = 0; i < cards.length; i++) {
-    const pageIndex = Math.floor(i / perPage);
-    const posInPage = i % perPage;
-    if (posInPage === 0 && pageIndex > 0) doc.addPage();
-    const row = Math.floor(posInPage / cols);
-    const col = posInPage % cols;
-    const x = marginX + col * (cellW + gap);
-    const y = marginY + row * (cellH + gap);
-
+  // Preload back image once (if provided)
+  let backImg: { dataUrl: string; w: number; h: number } | null = null;
+  if (backUrl) {
     try {
-      const { dataUrl, w, h } = await loadImageDataUrl(cards[i].url);
-      // Fit preserving aspect ratio
-      const ratio = Math.min(cellW / w, cellH / h);
-      const drawW = w * ratio;
-      const drawH = h * ratio;
-      const dx = x + (cellW - drawW) / 2;
-      const dy = y + (cellH - drawH) / 2;
-      doc.addImage(dataUrl, 'PNG', dx, dy, drawW, drawH);
+      backImg = await loadImageDataUrl(backUrl);
     } catch (e) {
-      doc.setFontSize(8);
-      doc.text(cards[i].label, x + 2, y + 5);
+      console.warn('Could not load back image', backUrl, e);
+    }
+  }
+
+  const totalPages = Math.ceil(cards.length / perPage);
+
+  for (let p = 0; p < totalPages; p++) {
+    if (p > 0) doc.addPage();
+
+    const pageCards = cards.slice(p * perPage, p * perPage + perPage);
+
+    // Front page
+    for (let posInPage = 0; posInPage < pageCards.length; posInPage++) {
+      const row = Math.floor(posInPage / cols);
+      const col = posInPage % cols;
+      const x = marginX + col * (cellW + gap);
+      const y = marginY + row * (cellH + gap);
+
+      try {
+        const { dataUrl, w, h } = await loadImageDataUrl(pageCards[posInPage].url);
+        const ratio = Math.min(cellW / w, cellH / h);
+        const drawW = w * ratio;
+        const drawH = h * ratio;
+        const dx = x + (cellW - drawW) / 2;
+        const dy = y + (cellH - drawH) / 2;
+        doc.addImage(dataUrl, 'PNG', dx, dy, drawW, drawH);
+      } catch (e) {
+        doc.setFontSize(8);
+        doc.text(pageCards[posInPage].label, x + 2, y + 5);
+      }
+    }
+
+    // Back page (only if backImg is available)
+    if (backImg) {
+      doc.addPage();
+      for (let posInPage = 0; posInPage < pageCards.length; posInPage++) {
+        const row = Math.floor(posInPage / cols);
+        const col = posInPage % cols;
+        // Mirror horizontally so duplex (long-edge flip) aligns front/back
+        const mirroredCol = cols - 1 - col;
+        const x = marginX + mirroredCol * (cellW + gap);
+        const y = marginY + row * (cellH + gap);
+
+        const { dataUrl, w, h } = backImg;
+        const ratio = Math.min(cellW / w, cellH / h);
+        const drawW = w * ratio;
+        const drawH = h * ratio;
+        const dx = x + (cellW - drawW) / 2;
+        const dy = y + (cellH - drawH) / 2;
+        doc.addImage(dataUrl, 'PNG', dx, dy, drawW, drawH);
+      }
     }
   }
 
